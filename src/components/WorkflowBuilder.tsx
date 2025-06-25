@@ -56,6 +56,8 @@ export function WorkflowBuilder() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLDivElement>(null);
+  // Add a ref for the scrollable content
+  const contentRef = useRef<HTMLDivElement>(null);
 
   const workflow = state.workflows.find(w => w.id === workflowId);
   const selectedNode = state.selectedNode;
@@ -67,21 +69,22 @@ export function WorkflowBuilder() {
 
   // Memoize centerCanvas function to prevent initialization issues
   const centerCanvas = useCallback(() => {
-    if (!canvasRef.current) return;
-    
-    const canvasRect = canvasRef.current.getBoundingClientRect();
-    const canvasWidth = canvasRect.width;
-    const canvasHeight = canvasRect.height;
-    
-    // Calculate the center position accounting for the workflow content
-    // The workflow content is 264px wide, so we center that
-    const contentWidth = 264;
-    const centerX = (canvasWidth - contentWidth) / 2;
-    const centerY = canvasHeight / 2 - 200; // Offset a bit from center for better visual balance
-    
-    setPan({ x: centerX, y: centerY });
-    setZoom(1);
-  }, []);
+    if (!canvasRef.current || !contentRef.current) return;
+    // Use setTimeout to ensure DOM is updated before measuring
+    setTimeout(() => {
+      if (!canvasRef.current || !contentRef.current) return;
+      const canvasRect = canvasRef.current.getBoundingClientRect();
+      const contentRect = contentRef.current.getBoundingClientRect();
+      const canvasWidth = canvasRect.width;
+      const canvasHeight = canvasRect.height;
+      const contentWidth = contentRect.width;
+      const contentHeight = contentRect.height;
+      const centerX = (canvasWidth - contentWidth * zoom) / 2;
+      const centerY = (canvasHeight - contentHeight * zoom) / 2;
+      setPan({ x: centerX, y: centerY });
+      setZoom(1);
+    }, 0);
+  }, [zoom]);
 
   // Center canvas when workflow loads or side panel opens/closes
   useEffect(() => {
@@ -501,7 +504,9 @@ export function WorkflowBuilder() {
   };
 
   // Render a single branch
-  const renderBranch = (branch: string, branchIndex: number) => {
+  const renderBranch = (branch: string, branchIndex: number, parentConditionId?: string) => {
+    // Prevent duplicate rendering: if this branch is being rendered as a child of a Condition node, do not render it again at the top level
+    if (parentConditionId && branchIndex === 0) return null;
     const branchNodes = getNodesForBranch(branch);
     const isMainBranch = branch === 'main';
     
@@ -561,9 +566,16 @@ export function WorkflowBuilder() {
               {isCondition ? (
                 (() => {
                   const branches = node.metadata?.branches || ['Branch 1', 'Branch 2'];
+                  const branchCount = branches.length;
+                  const columnWidth = 264; // width of activity card
+                  const gap = 40;
+                  const svgHeight = 32;
+                  const svgWidth = branchCount > 1 ? (branchCount - 1) * (columnWidth + gap) : 0;
+                  const startX = svgWidth / 2;
+                  const branchXs = branches.map((_, idx) => idx * (columnWidth + gap));
                   return (
                     <div className="flex flex-col items-center w-full">
-                      {/* Condition Node Card (same as other activity cards) */}
+                      {/* Condition Node Card */}
                       <div
                         className={`w-[264px] bg-white rounded-xl p-4 cursor-pointer shadow-sm hover:shadow-md transition-all duration-200 relative group
                           ${selectedNode?.id === node.id 
@@ -603,14 +615,36 @@ export function WorkflowBuilder() {
                           </div>
                         </div>
                       </div>
-                      {/* Branches (dynamic) */}
-                      <div className="flex flex-row justify-between w-full mt-0 relative" style={{ maxWidth: 500 }}>
-                        
+                      <div className="w-0.5 h-4 bg-slate-300" />
+                      {/* SVG for horizontal + rounded lines */}
+                      {branchCount > 1 && (
+                        <svg width={svgWidth} height={svgHeight} className="block" style={{ marginTop: -1 }}>
+                          {/* Horizontal line */}
+                          <line x1={branchXs[0]} y1={svgHeight/2} x2={branchXs[branchCount-1]} y2={svgHeight/2} stroke="#CBD5E1" strokeWidth="2" />
+                          {/* Rounded corners and verticals */}
+                          {branchXs.map((x: number, idx: number) => (
+                            <React.Fragment key={idx}>
+                              {/* Rounded corner */}
+                              <path
+                                d={`M${x},${svgHeight/2} Q${x},${svgHeight/2+8} ${x},${svgHeight}`}
+                                stroke="#CBD5E1"
+                                strokeWidth="2"
+                                fill="none"
+                              />
+                            </React.Fragment>
+                          ))}
+                        </svg>
+                      )}
+                      {/* Branch columns */}
+                      <div className="flex flex-row justify-between w-full" style={{ gap: `${gap}px`, marginTop: branchCount > 1 ? -8 : 0 }}>
                         {branches.map((branchName: string, branchIdx: number) => (
-                          <div key={branchName} className="flex flex-col items-center w-1/2">
-                            <div className="h-4 w-0.5 bg-slate-300" />
+                          <div key={branchName} className="flex flex-col items-center w-[264px]">
+                            {/* Vertical line from horizontal SVG to tag */}
+                            <div className="w-0.5 h-4 bg-slate-300" />
+                            {/* Green branch tag */}
                             <div className="bg-[#C6F2F2] text-[#2B4C4C] px-2 py-1 rounded-lg mb-0 text-xs font-normal">{branchName}</div>
-                            <div className="h-4 w-0.5 bg-slate-300" />
+                            {/* Vertical line, plus, vertical line, then activities */}
+                            <div className="w-0.5 h-4 bg-slate-300" />
                             {/* Only show plus button if branch is empty */}
                             {getNodesForBranch(branchName).length === 0 && (
                               <button
@@ -620,6 +654,9 @@ export function WorkflowBuilder() {
                                 <Plus className="w-4 h-4" />
                               </button>
                             )}
+                            <div className="w-0.5 h-4 bg-slate-300" />
+                            {/* Render activities for this branch directly under the tag and plus button */}
+                            {renderBranch(branchName, branchIdx + 1, node.id)}
                           </div>
                         ))}
                       </div>
@@ -670,9 +707,11 @@ export function WorkflowBuilder() {
                 </div>
               )}
               {/* Connection Line */}
-              <div className="flex justify-center mb-0">
-                <div className="w-0.5 h-6 bg-slate-300"></div>
-              </div>
+              {(!isCondition) && (
+                <div className="flex justify-center mb-0">
+                  <div className="w-0.5 h-6 bg-slate-300"></div>
+                </div>
+              )}
               {/* Plus button after (except for Condition node) */}
               {!isCondition && (
                 <div className="flex justify-center mb-0">
@@ -693,6 +732,17 @@ export function WorkflowBuilder() {
 
   // Find the main branch nodes before rendering the plus button after the Trigger node
   const mainBranchNodes = getNodesForBranch('main');
+
+  // At the top of WorkflowBuilder, before the return statement:
+  const branchesRenderedAsChildren = new Set<string>();
+  state.workflows.forEach(wf => {
+    wf.nodes.forEach(node => {
+      const template = getActivityTemplate(node.activityTemplateId);
+      if (template && template.name === 'Condition' && node.metadata?.branches) {
+        node.metadata.branches.forEach((b: string) => branchesRenderedAsChildren.add(b));
+      }
+    });
+  });
 
   return (
     <div className="flex h-screen bg-white">
@@ -786,6 +836,7 @@ export function WorkflowBuilder() {
           
           {/* Scrollable Content */}
           <div 
+            ref={contentRef}
             className="absolute"
             style={{
               transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
@@ -837,9 +888,9 @@ export function WorkflowBuilder() {
 
               {/* Other Branches */}
               <div className="flex space-x-8 mt-8">
-                {getAllBranches().filter(branch => branch !== 'main').map((branch, index) => 
-                  renderBranch(branch, index + 1)
-                )}
+                {getAllBranches()
+                  .filter(branch => branch !== 'main' && !branchesRenderedAsChildren.has(branch))
+                  .map((branch, index) => renderBranch(branch, index + 1))}
               </div>
             </div>
           </div>
