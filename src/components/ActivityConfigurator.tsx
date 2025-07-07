@@ -9,7 +9,8 @@ import { Plus, Trash2, Edit, Settings, Eye, Save, X, Mail, Globe, Database, File
   Video,
   Bot,
   ChevronUp,
-  ChevronDown } from 'lucide-react';
+  ChevronDown,
+  MoreVertical } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { ActivityTemplate, UIElement, ConditionalFollowUp } from '../types';
@@ -53,6 +54,8 @@ export function ActivityConfigurator() {
   const [editingTemplate, setEditingTemplate] = useState<ActivityTemplate | null>(null);
   const [previewMode, setPreviewMode] = useState(false);
   const [triggerCreated, setTriggerCreated] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [templateToDelete, setTemplateToDelete] = useState<ActivityTemplate | null>(null);
 
   // Create default trigger template if it doesn't exist (only once)
   useEffect(() => {
@@ -137,12 +140,10 @@ export function ActivityConfigurator() {
   };
 
   const handleDeleteTemplate = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this activity template?')) {
-      try {
-        await deleteActivityTemplate(id);
-      } catch (error) {
-        console.error('Failed to delete template:', error);
-      }
+    try {
+      await deleteActivityTemplate(id);
+    } catch (error) {
+      console.error('Failed to delete template:', error);
     }
   };
 
@@ -230,17 +231,32 @@ export function ActivityConfigurator() {
                         <h3 className="font-medium text-slate-900">{template.name}</h3>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="relative flex items-center">
                       <button
-                        onClick={(e) => {
+                        onClick={e => {
                           e.stopPropagation();
-                          handleDeleteTemplate(template.id);
+                          setOpenMenuId(openMenuId === template.id ? null : template.id);
                         }}
-                        disabled={state.loading}
-                        className="p-1 text-slate-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                        className="p-1 text-slate-400 hover:text-slate-600 transition-colors"
+                        aria-label="More actions"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <MoreVertical className="w-4 h-4" />
                       </button>
+                      {openMenuId === template.id && (
+                        <div className="absolute right-0 top-8 w-32 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-10">
+                          <button
+                            onClick={e => {
+                              e.stopPropagation();
+                              setOpenMenuId(null);
+                              setTemplateToDelete(template);
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            <span>Delete</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -276,6 +292,60 @@ export function ActivityConfigurator() {
           onSave={handleCreateTemplate}
           loading={state.loading}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {templateToDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30"
+          onClick={() => setTemplateToDelete(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-0 flex flex-col"
+            style={{ minWidth: 380 }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 pt-5 pb-4">
+              <h2 className="text-lg font-semibold text-[#3A3F4B]">Delete activity template</h2>
+              <button
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-full focus:outline-none"
+                onClick={() => setTemplateToDelete(null)}
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {/* Divider */}
+            <div className="border-t border-slate-200 w-full" />
+            {/* Description */}
+            <div className="px-6 py-8 text-[#3A3F4B] text-md font-normal">
+              Are you sure you want to delete this activity template? The action cannot be reverted.
+            </div>
+            {/* Divider */}
+            <div className="border-t border-slate-200 w-full" />
+            {/* Buttons */}
+            <div className="flex justify-end space-x-4 px-6 py-4">
+              <button
+                className="h-10 px-4 rounded-xl border border-[#8C95A8] text-[#2927B2] text-sm font-medium bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#4D3EE0]"
+                style={{ fontSize: 14 }}
+                onClick={() => setTemplateToDelete(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="h-10 px-4 rounded-xl bg-[#C40F24] text-white text-sm font-medium hover:bg-[#B71C1C] focus:outline-none focus:ring-2 focus:ring-[#D32F2F]"
+                style={{ fontSize: 14 }}
+                onClick={async () => {
+                  await handleDeleteTemplate(templateToDelete.id);
+                  setTemplateToDelete(null);
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

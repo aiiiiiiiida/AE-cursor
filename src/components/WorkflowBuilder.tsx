@@ -1,9 +1,10 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, Dispatch, SetStateAction, useRef as useReactRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Plus, Play, Save, Eye, Settings, Trash2, Search, X, Edit2, Check, ZoomIn, ZoomOut, Maximize2, Minus, Scan, Mail, Globe, Database, FileText, Calendar, Users, Zap, Clock, CheckCircle, AlertCircle, Split, Image, Bot, Hourglass, User, MessageCircle, Tag, ListChecks, Video, ExternalLink, GitBranch } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { WorkflowNode, ActivityTemplate, UIElement, ConditionalFollowUp } from '../types';
 import { DynamicForm } from './DynamicForm';
+import ReactDOM from 'react-dom';
 
 const AVAILABLE_ICONS = [
   { name: 'Mail', component: Mail },
@@ -66,6 +67,9 @@ export function WorkflowBuilder() {
   const triggerTemplate = state.activityTemplates.find(template => 
     template.name.toLowerCase().includes('trigger') || template.icon === 'Zap'
   );
+
+  const [showActivityDropdown, setShowActivityDropdown] = useState(false);
+  const [activityDropdownPosition, setActivityDropdownPosition] = useState<{ left: number; top: number } | null>(null);
 
   // Memoize centerCanvas function to prevent initialization issues
   const centerCanvas = useCallback(() => {
@@ -157,10 +161,17 @@ export function WorkflowBuilder() {
     }
   };
 
-  const handleAddActivity = (position: number, branch: string = 'main') => {
+  const handleAddActivity = (position: number, branch: string = 'main', event?: React.MouseEvent) => {
     setInsertPosition(position);
     setInsertBranch(branch);
-    setShowActivityModal(true);
+    if (event) {
+      const rect = (event.target as HTMLElement).getBoundingClientRect();
+      setActivityDropdownPosition({
+        left: rect.left + rect.width / 2 - 132, // center dropdown (width 264px)
+        top: rect.bottom + window.scrollY + 8,
+      });
+    }
+    setShowActivityDropdown(true);
   };
 
   const handleSelectActivity = async (activity: ActivityTemplate) => {
@@ -551,7 +562,7 @@ export function WorkflowBuilder() {
               {index === 0 && branchNodes.length > 0 && !isFirstNodeAfterCondition && (
                 <div className="flex justify-center mb-0">
                   <button
-                    onClick={() => handleAddActivity(index, branch)}
+                    onClick={e => handleAddActivity(index, branch, e)}
                     className="w-6 h-6 bg-gray-400 text-white rounded-lg flex items-center justify-center hover:bg-gray-500 transition-colors"
                   >
                     <Plus className="w-4 h-4" />
@@ -572,7 +583,7 @@ export function WorkflowBuilder() {
                   const svgHeight = 32;
                   const svgWidth = branchCount > 1 ? (branchCount - 1) * (columnWidth + gap) : 0;
                   const startX = svgWidth / 2;
-                  const branchXs = branches.map((_, idx) => idx * (columnWidth + gap));
+                  const branchXs = branches.map((_: any, idx: any) => idx * (columnWidth + gap));
                   return (
                     <div className="flex flex-col items-center w-full">
                       {/* Condition Node Card */}
@@ -596,24 +607,15 @@ export function WorkflowBuilder() {
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
-                        <div className="flex items-start space-x-4">
-                          <div 
-                            className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-                            style={{ backgroundColor: iconColor.bg }}
-                          >
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ backgroundColor: iconColor.bg }}>
                             <IconComponent className="w-4 h-4" style={{ color: iconColor.iconColor }} />
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-medium text-[#353B46] text-sm mb-0">
-                              {node.userAssignedName || template.name}
-                            </h3>
-                            {displayDescription && (
-                              <p className="text-xs text-[#637085] leading-relaxed">
-                                {displayDescription}
-                              </p>
-                            )}
-                          </div>
+                          <h3 className="font-medium text-[#353B46] text-[14px] mb-0">{node.userAssignedName || template.name}</h3>
                         </div>
+                        {displayDescription && (
+                          <p className="text-[10px] text-[#637085] leading-relaxed mt-2">{displayDescription}</p>
+                        )}
                       </div>
                       <div className="w-0.5 h-4 bg-slate-300" />
                       {/* SVG for horizontal + rounded lines */}
@@ -685,24 +687,15 @@ export function WorkflowBuilder() {
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
-                    <div className="flex items-start space-x-4">
-                      <div 
-                        className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-                        style={{ backgroundColor: iconColor.bg }}
-                      >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ backgroundColor: iconColor.bg }}>
                         <IconComponent className="w-4 h-4" style={{ color: iconColor.iconColor }} />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-[#353B46] text-sm mb-0">
-                          {node.userAssignedName || template.name}
-                        </h3>
-                        {displayDescription && (
-                          <p className="text-xs text-[#637085] leading-relaxed">
-                            {displayDescription}
-                          </p>
-                        )}
-                      </div>
+                      <h3 className="font-medium text-[#353B46] text-[14px] mb-0">{node.userAssignedName || template.name}</h3>
                     </div>
+                    {displayDescription && (
+                      <p className="text-[10px] text-[#637085] leading-relaxed mt-2">{displayDescription}</p>
+                    )}
                   </div>
                 </div>
               )}
@@ -716,7 +709,7 @@ export function WorkflowBuilder() {
               {!isCondition && (
                 <div className="flex justify-center mb-0">
                   <button
-                    onClick={() => handleAddActivity(index + 1, branch)}
+                    onClick={e => handleAddActivity(index + 1, branch, e)}
                     className="w-6 h-6 bg-gray-400 text-white rounded-lg flex items-center justify-center hover:bg-gray-500 transition-colors"
                   >
                     <Plus className="w-4 h-4" />
@@ -785,10 +778,10 @@ export function WorkflowBuilder() {
           <div className="flex items-center space-x-3">
             <button
               onClick={() => setPreviewMode(!previewMode)}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+              className={`flex items-center space-x-2 px-4 py-2 rounded-xl transition-colors ${
                 previewMode
                   ? 'bg-green-100 text-green-700'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  : 'bg-white text-[#2927B2] border border-[#8C95A8] hover:bg-slate-200'
               }`}
             >
               <span>Simulate</span>
@@ -856,16 +849,26 @@ export function WorkflowBuilder() {
                     e.stopPropagation();
                     handleTriggerClick();
                   }}
+                  style={{ position: 'relative' }}
                 >
-                  <div className="flex items-start space-x-4">
-                    <div className="w-8 h-8 bg-[#D8F4F2] rounded-xl flex items-center justify-center flex-shrink-0">
+                  {/* Green line on top for Trigger */}
+                  <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '6px',
+                    background: '#5CB6AC',
+                    borderTopLeftRadius: '14px',
+                    borderTopRightRadius: '14px',
+                  }} />
+                  <div className="flex items-center space-x-2">
+                    <div className="w-8 h-8 bg-[#D8F4F2] rounded-[10px] flex items-center justify-center flex-shrink-0">
                       <Zap className="w-4 h-4 text-[#3C6D68]" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-slate-900 text-sm mb-1">Trigger</h3>
-                      <p className="text-xs text-slate-600">Workflow starts here</p>
-                    </div>
+                    <h3 className="font-medium text-[#353B46] text-[14px] mb-0">Trigger</h3>
                   </div>
+                  <p className="text-[10px] text-[#637085] leading-relaxed mt-2">Workflow starts here</p>
                 </div>
               </div>
               <div className="flex justify-center mb-0">
@@ -875,7 +878,7 @@ export function WorkflowBuilder() {
               {mainBranchNodes.length === 0 && (
                 <div className="flex justify-center mb-0">
                   <button
-                    onClick={() => handleAddActivity(0, 'main')}
+                    onClick={e => handleAddActivity(0, 'main', e)}
                     className="w-6 h-6 bg-gray-400 text-white rounded-lg flex items-center justify-center hover:bg-gray-500 transition-colors"
                   >
                     <Plus className="w-4 h-4" />
@@ -926,18 +929,18 @@ export function WorkflowBuilder() {
       {selectedNode && (
         <div className="fixed top-[73px] right-0 w-[420px] h-[calc(100vh-73px)] bg-white border-l border-slate-200 flex flex-col z-10 transition-transform duration-300">
           {/* Side Panel Header */}
-          <div className="bg-white border-b border-slate-200 p-4 flex items-center justify-between">
+          <div className="bg-white p-4 flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-slate-900">
+              <h3 className="text-[20px] font-semibold text-[#353B46]">
                 {selectedNode.id === 'trigger' ? 'Trigger' : (selectedNode.userAssignedName || selectedTemplate?.name || 'Configuration')}
               </h3>
               {(selectedNode.sidePanelDescription || selectedTemplate?.sidePanelDescription) && (
-                <p className="text-xs text-slate-600 mt-1">
+                <p className="text-[13px] text-[#464F5E] mt-1">
                   {selectedNode.sidePanelDescription || selectedTemplate?.sidePanelDescription}
                 </p>
               )}
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-3">
               {selectedNode.id !== 'trigger' && (
                 <button
                   onClick={() => setIsEditingElements(!isEditingElements)}
@@ -972,83 +975,16 @@ export function WorkflowBuilder() {
         </div>
       )}
 
-      {/* Activity Selection Modal */}
-      {showActivityModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl w-full max-w-md mx-4 shadow-2xl max-h-[80vh] flex flex-col">
-            {/* Modal Header */}
-            <div className="p-4 border-b border-slate-200">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-900">Add Activity</h2>
-                  {insertBranch !== 'main' && (
-                    <p className="text-sm text-slate-600">Adding to {insertBranch} branch</p>
-                  )}
-                </div>
-                <button
-                  onClick={() => setShowActivityModal(false)}
-                  className="text-slate-400 hover:text-slate-600 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              {/* Search */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-                <input
-                  type="text"
-                  placeholder="Search"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            {/* Modal Content */}
-            <div className="flex-1 overflow-y-auto p-4">
-              {Object.entries(groupedActivities).map(([category, activities]) => (
-                <div key={category} className="mb-6">
-                  <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
-                    {category}
-                  </h3>
-                  <div className="space-y-2">
-                    {activities.map((activity) => {
-                      const IconComponent = getIconComponent(activity.icon);
-                      const iconColor = getIconColor(activity.iconColor || 'purple');
-                      
-                      return (
-                        <button
-                          key={activity.id}
-                          onClick={() => handleSelectActivity(activity)}
-                          className="w-full p-4 text-left border border-slate-200 rounded-xl hover:border-[#4D3EE0] hover:bg-blue-50 transition-all duration-200 group"
-                        >
-                          <div className="flex flex-col items-start space-y-2">
-                            {/* Row: Icon + Title */}
-                            <div className="flex items-center space-x-3">
-                              <div 
-                                className="w-10 h-10 rounded-xl flex items-center justify-center group-hover:${iconColor.hover} transition-all"
-                                style={{ backgroundColor: iconColor.bg }}
-                              >
-                                <IconComponent className="w-5 h-5" style={{ color: iconColor.iconColor }} />
-                              </div>
-                              <h4 className="font-semibold text-base text-slate-900">
-                                {activity.name}
-                              </h4>
-                            </div>
-
-                            
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+      {showActivityDropdown && activityDropdownPosition && ReactDOM.createPortal(
+        <ActivityDropdown
+          position={activityDropdownPosition}
+          activities={state.activityTemplates}
+          onSelect={handleSelectActivity}
+          onClose={() => setShowActivityDropdown(false)}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+        />,
+        document.body
       )}
     </div>
   );
@@ -1844,6 +1780,96 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove }: WorkflowUIElem
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+interface ActivityDropdownProps {
+  position: { left: number; top: number };
+  activities: ActivityTemplate[];
+  onSelect: (activity: ActivityTemplate) => void;
+  onClose: () => void;
+  searchTerm: string;
+  setSearchTerm: Dispatch<SetStateAction<string>>;
+}
+
+function ActivityDropdown({ position, activities, onSelect, onClose, searchTerm, setSearchTerm }: ActivityDropdownProps): JSX.Element {
+  const dropdownRef = useReactRef<HTMLDivElement>(null);
+  // Close on outside click
+  useEffect(() => {
+    function handleClick(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        onClose();
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [onClose]);
+  // Filter out triggers
+  const filteredActivities = activities.filter((a: ActivityTemplate) =>
+    !(a.name.toLowerCase().includes('trigger') || a.icon === 'Zap')
+  );
+  // Group activities by category
+  const grouped = filteredActivities.reduce((acc: Record<string, ActivityTemplate[]>, act: ActivityTemplate) => {
+    if (!acc[act.category]) acc[act.category] = [];
+    acc[act.category].push(act);
+    return acc;
+  }, {} as Record<string, ActivityTemplate[]>);
+  // Filter by search
+  const filtered = Object.entries(grouped).reduce((acc: Record<string, ActivityTemplate[]>, [cat, acts]) => {
+    const filteredActs = (acts as ActivityTemplate[]).filter((a: ActivityTemplate) => a.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    if (filteredActs.length) acc[cat] = filteredActs;
+    return acc;
+  }, {} as Record<string, ActivityTemplate[]>);
+  return (
+    <div
+      ref={dropdownRef}
+      className="z-[9999] fixed"
+      style={{ left: position.left, top: position.top, width: 264, maxWidth: '90vw' }}
+    >
+      <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-3" style={{ minWidth: 260 }}>
+        <div className="flex items-center mb-2 px-1">
+          
+          <input
+            type="text"
+            placeholder="Search"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="flex-1 px-2 py-1 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            style={{ minWidth: 0 }}
+            autoFocus
+          />
+        </div>
+        <div className="max-h-80 overflow-y-auto">
+          {Object.entries(filtered).length === 0 && (
+            <div className="text-xs text-slate-500 px-2 py-6 text-center">No activities found</div>
+          )}
+          {Object.entries(filtered).map(([category, acts]) => (
+            <div key={category} className="mb-2">
+              <div className="text-[10px] font-bold text-[#8C95A8] uppercase tracking-wider px-2 py-1 bg-[#F5F7FA] rounded mb-1">{category}</div>
+              <div className="flex flex-col gap-1">
+                {(acts as ActivityTemplate[]).map(activity => {
+                  const IconComponent = AVAILABLE_ICONS.find(i => i.name === activity.icon)?.component || Settings;
+                  const iconColor = ICON_COLORS.find(c => c.value === (activity.iconColor || 'purple')) || ICON_COLORS[0];
+                  return (
+                    <button
+                      key={activity.id}
+                      onClick={() => { onSelect(activity); onClose(); }}
+                      className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-[#F5F7FA] transition-all text-left"
+                      style={{ minHeight: 36 }}
+                    >
+                      <div className="w-6 h-6 rounded-[8px] flex items-center justify-center" style={{ backgroundColor: iconColor.bg }}>
+                        <IconComponent className="w-4 h-4" style={{ color: iconColor.iconColor }} />
+                      </div>
+                      <span className="font-medium text-[#353B46] text-xs">{activity.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

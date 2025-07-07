@@ -210,13 +210,7 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
     onChange?.(newValues);
   };
 
-  if (elements.length === 0 && dynamicElements.length === 0) {
-    return (
-      <div className="text-center py-8 text-slate-500">
-        No configuration elements defined
-      </div>
-    );
-  }
+  
 
   const indentClass = level > 0 ? `ml-${level * 4} ` : '';
   const allElements = [...elements, ...dynamicElements];

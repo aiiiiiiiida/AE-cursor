@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Copy, Trash2, Edit, Play, Calendar, Activity, MoreHorizontal, Globe, Settings } from 'lucide-react';
+import { Plus, Search, Copy, Trash2, Edit, Play, Calendar, Activity, MoreHorizontal, MoreVertical, Globe, Settings, AlertTriangle, X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Workflow } from '../types';
 
@@ -11,6 +11,7 @@ export function WorkflowsTable() {
   const [selectedWorkflows, setSelectedWorkflows] = useState<string[]>([]);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [workflowToDelete, setWorkflowToDelete] = useState<Workflow | null>(null);
 
   const filteredWorkflows = state.workflows.filter(workflow =>
     workflow.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -41,11 +42,11 @@ export function WorkflowsTable() {
     }
   };
 
-  const handleDeleteWorkflow = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this workflow?')) {
-      await deleteWorkflow(id);
+  const handleDeleteWorkflow = async () => {
+    if (workflowToDelete) {
+      await deleteWorkflow(workflowToDelete.id);
+      setWorkflowToDelete(null);
     }
-    setOpenMenuId(null);
   };
 
   const handleDuplicateWorkflow = async (workflow: Workflow) => {
@@ -255,7 +256,7 @@ export function WorkflowsTable() {
                           }}
                           className="p-1 text-slate-400 hover:text-slate-600 transition-colors"
                         >
-                          <MoreHorizontal className="w-4 h-4" />
+                          <MoreVertical className="w-4 h-4" />
                         </button>
                         
                         {openMenuId === workflow.id && (
@@ -285,7 +286,8 @@ export function WorkflowsTable() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleDeleteWorkflow(workflow.id);
+                                setWorkflowToDelete(workflow);
+                                setOpenMenuId(null);
                               }}
                               className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
                             >
@@ -304,12 +306,55 @@ export function WorkflowsTable() {
         </div>
       </div>
 
-      {/* Click outside to close menu */}
-      {openMenuId && (
-        <div 
-          className="fixed inset-0 z-5" 
-          onClick={() => setOpenMenuId(null)}
-        />
+      {/* Delete Confirmation Modal */}
+      {workflowToDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30"
+          onClick={() => setWorkflowToDelete(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-0 flex flex-col"
+            style={{ minWidth: 380 }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 pt-5 pb-4">
+              <h2 className="text-lg font-semibold text-[#3A3F4B]">Delete workflow</h2>
+              <button
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-full focus:outline-none"
+                onClick={() => setWorkflowToDelete(null)}
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {/* Divider */}
+            <div className="border-t border-slate-200 w-full" />
+            {/* Description */}
+            <div className="px-6 py-8 text-[#3A3F4B] text-md font-normal">
+              Are you sure you want to delete this workflow? The action can not be reverted.
+            </div>
+            {/* Divider */}
+            <div className="border-t border-slate-200 w-full" />
+            {/* Buttons */}
+            <div className="flex justify-end space-x-4 px-6 py-4">
+              <button
+                className="h-10 px-4 rounded-xl border border-[#8C95A8] text-[#2927B2] text-sm font-medium bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#4D3EE0]"
+                style={{ fontSize: 14 }}
+                onClick={() => setWorkflowToDelete(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="h-10 px-4 rounded-xl bg-[#C40F24] text-white text-sm font-medium hover:bg-[#B71C1C] focus:outline-none focus:ring-2 focus:ring-[#D32F2F]"
+                style={{ fontSize: 14 }}
+                onClick={handleDeleteWorkflow}
+              >
+                Delete workflow
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
