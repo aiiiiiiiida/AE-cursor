@@ -5,12 +5,12 @@ export interface ConditionalFollowUp {
 
 export interface UIElement {
   id: string;
-  type: 'text' | 'dropdown' | 'radio' | 'checkbox' | 'button' | 'section-divider' | 'text-block' | 'toggle' | 'file-upload' | 'textarea';
+  type: 'text' | 'dropdown' | 'radio' | 'checkbox' | 'button' | 'section-divider' | 'text-block' | 'toggle' | 'file-upload' | 'textarea' | 'number' | 'date';
   label: string;
   options?: string[];
   required?: boolean;
   placeholder?: string;
-  defaultValue?: string | boolean;
+  defaultValue?: string | boolean | number;
   text?: string; // For text-block and section-divider
   hasConditionalFollowUps?: boolean;
   conditionalFollowUps?: ConditionalFollowUp[];
@@ -21,6 +21,12 @@ export interface UIElement {
   iconPosition?: 'left' | 'right';
   addsElements?: boolean;
   elementReference?: string; // For referencing elements like #{Questionnaire}
+  // Number input specific
+  min?: number | string; // string for date type (ISO)
+  max?: number | string; // string for date type (ISO)
+  step?: number; // for date: days
+  halfSize?: boolean;
+  tab?: 'Configuration' | 'Advanced' | 'User Interface'; // Optional tab grouping
 }
 
 export interface ActivityTemplate {

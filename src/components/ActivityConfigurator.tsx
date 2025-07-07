@@ -28,7 +28,7 @@ const AVAILABLE_ICONS = [
   { name: 'Clock', component: Clock },
   { name: 'CheckCircle', component: CheckCircle },
   { name: 'Split', component: Split },
- 
+  { name: 'Plus', component: Plus },
   { name: 'Hourglass', component: Hourglass },
   { name: 'Search', component: Search },
   { name: 'User', component: User },
@@ -47,6 +47,12 @@ const ICON_COLORS = [
   { name: 'Teal', value: 'teal', bg: '#D8F4F2', iconColor: '#3C6D68' }
 ];
 
+// Helper to normalize icon names to match AVAILABLE_ICONS
+function normalizeIconName(name: string): string {
+  if (!name) return '';
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
 export function ActivityConfigurator() {
   const navigate = useNavigate();
   const { state, createActivityTemplate, updateActivityTemplate, deleteActivityTemplate } = useApp();
@@ -57,68 +63,48 @@ export function ActivityConfigurator() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [templateToDelete, setTemplateToDelete] = useState<ActivityTemplate | null>(null);
 
-  // Create default trigger template if it doesn't exist (only once)
+  // Ensure only one trigger template exists at all times
   useEffect(() => {
-    if (triggerCreated || state.loading) return;
+    if (state.loading) return;
 
     const triggerTemplates = state.activityTemplates.filter(template => 
       template.name.toLowerCase().includes('trigger') || template.icon === 'Zap'
     );
 
-    // If no trigger templates exist, create one
-    if (triggerTemplates.length === 0 && state.activityTemplates.length >= 0) {
-      const createDefaultTrigger = async () => {
-        try {
-          await createActivityTemplate({
-            name: 'Trigger',
-            icon: 'Zap',
-            iconColor: 'teal',
-            description: 'Workflow starts here',
-            category: 'Workflow',
-            sidePanelDescription: 'Configure when this workflow should start',
-            sidePanelElements: [
-              {
-                id: 'trigger-type',
-                type: 'dropdown',
-                label: 'Trigger Type',
-                options: ['Manual', 'Schedule', 'Webhook', 'Email Received', 'File Upload'],
-                required: true
-              },
-              {
-                id: 'trigger-condition',
-                type: 'text',
-                label: 'Trigger Condition',
-                placeholder: 'Enter trigger condition',
-                required: false
-              }
-            ]
-          });
-          setTriggerCreated(true);
-        } catch (error) {
-          console.error('Failed to create default trigger template:', error);
-        }
-      };
-
-      createDefaultTrigger();
-    } else if (triggerTemplates.length > 1) {
-      // If multiple trigger templates exist, keep only the first one and delete the rest
-      const keepTrigger = triggerTemplates[0];
-      const duplicateTriggers = triggerTemplates.slice(1);
-      
-      // Process deletions sequentially to avoid race conditions
-      const deleteDuplicates = async () => {
-        for (const trigger of duplicateTriggers) {
-          try {
-            await deleteActivityTemplate(trigger.id);
-          } catch (error) {
-            console.error('Failed to delete duplicate trigger template:', error);
+    if (triggerTemplates.length === 0) {
+      // No trigger exists, create one
+      createActivityTemplate({
+        name: 'Trigger',
+        icon: 'Zap',
+        iconColor: 'teal',
+        description: 'Workflow starts here',
+        category: 'Workflow',
+        sidePanelDescription: 'Configure when this workflow should start',
+        sidePanelElements: [
+          {
+            id: 'trigger-type',
+            type: 'dropdown',
+            label: 'Trigger Type',
+            options: ['Manual', 'Schedule', 'Webhook', 'Email Received', 'File Upload'],
+            required: true
+          },
+          {
+            id: 'trigger-condition',
+            type: 'text',
+            label: 'Trigger Condition',
+            placeholder: 'Enter trigger condition',
+            required: false
           }
-        }
-      };
-
-      deleteDuplicates();
+        ]
+      });
+    } else if (triggerTemplates.length > 1) {
+      // More than one trigger exists, delete all but the first
+      const duplicateTriggers = triggerTemplates.slice(1);
+      duplicateTriggers.forEach(trigger => {
+        deleteActivityTemplate(trigger.id);
+      });
     }
-  }, [state.activityTemplates, state.loading, createActivityTemplate, deleteActivityTemplate, triggerCreated]);
+  }, [state.activityTemplates, state.loading, createActivityTemplate, deleteActivityTemplate]);
 
   const handleCreateTemplate = async (templateData: Omit<ActivityTemplate, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
@@ -153,7 +139,8 @@ export function ActivityConfigurator() {
   };
 
   const getIconComponent = (iconName: string) => {
-    const icon = AVAILABLE_ICONS.find(i => i.name === iconName);
+    const normalized = normalizeIconName(iconName);
+    const icon = AVAILABLE_ICONS.find(i => i.name === normalized);
     return icon ? icon.component : Settings;
   };
 
@@ -362,18 +349,34 @@ interface TemplateEditorProps {
 
 function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePreview, loading }: TemplateEditorProps) {
   const [editedTemplate, setEditedTemplate] = useState<ActivityTemplate>(template);
+  const [activeTab, setActiveTab] = useState<'Configuration' | 'Advanced' | 'User Interface'>('Configuration');
 
   // Update editedTemplate when template prop changes
   useEffect(() => {
     setEditedTemplate(template);
   }, [template]);
 
+  // Determine which tabs are present
+  const tabSet = new Set(
+    editedTemplate.sidePanelElements.map(el => el.tab || 'Configuration')
+  );
+  const tabs = Array.from(tabSet) as ('Configuration' | 'Advanced' | 'User Interface')[];
+  // Always show in order: Configuration, Advanced, User Interface
+  const orderedTabs = ['Configuration', 'Advanced', 'User Interface'].filter(tab => tabs.includes(tab as any)) as ('Configuration' | 'Advanced' | 'User Interface')[];
+  // Always allow all 3 tabs to be selectable for editing
+  const allTabs = ['Configuration', 'Advanced', 'User Interface'] as const;
+  const showTabs = allTabs.length > 1;
+
+  // Only show elements for the active tab
+  const filteredElements = editedTemplate.sidePanelElements.filter(el => (el.tab || 'Configuration') === activeTab);
+
   const addUIElement = () => {
     const newElement: UIElement = {
       id: Date.now().toString(),
       type: 'text',
       label: 'New Field',
-      required: false
+      required: false,
+      tab: activeTab
     };
     setEditedTemplate({
       ...editedTemplate,
@@ -418,7 +421,8 @@ function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePrevi
   };
 
   const getIconComponent = (iconName: string) => {
-    const icon = AVAILABLE_ICONS.find(i => i.name === iconName);
+    const normalized = normalizeIconName(iconName);
+    const icon = AVAILABLE_ICONS.find(i => i.name === normalized);
     return icon ? icon.component : Settings;
   };
 
@@ -456,143 +460,65 @@ function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePrevi
         </div>
       ) : (
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
-            <input
-              type="text"
-              value={editedTemplate.name}
-              onChange={(e) => setEditedTemplate({ ...editedTemplate, name: e.target.value })}
-              disabled={loading}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
-            />
-          </div>
+          {/* Tab Bar */}
+          {showTabs && (
+  <div className="flex bg-[#F5F7FA] rounded-xl p-0.5 w-full max-w-full mb-4">
+    {allTabs.map((tab, idx) => (
+      <button
+        key={tab}
+        type="button"
+        onClick={() => setActiveTab(tab)}
+        className={
+          `flex-1 py-2 text-[12px] font-semibold focus:outline-none transition-all duration-150 ` +
+          (activeTab === tab
+            ? 'bg-white shadow text-slate-700 z-10 ' +
+              (idx === 0 ? 'rounded-l-xl' : '') +
+              (idx === allTabs.length - 1 ? ' rounded-r-xl' : '')
+            : 'bg-transparent text-slate-500 hover:text-slate-700 ' +
+              (idx === 0 ? 'rounded-l-xl' : '') +
+              (idx === allTabs.length - 1 ? ' rounded-r-xl' : ''))
+        }
+      >
+        {tab}
+      </button>
+    ))}
+  </div>
+)}
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
-            <select
-              value={editedTemplate.category}
-              onChange={(e) => setEditedTemplate({ ...editedTemplate, category: e.target.value })}
+
+          {/* Add UI Element Button for Active Tab */}
+          <div className="flex items-center justify-between mb-3">
+            <label className="block text-sm font-medium text-slate-700">UI Elements ({activeTab})</label>
+            <button
+              onClick={addUIElement}
               disabled={loading}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+              className="text-sm text-gray-600 hover:text-gray-700 font-medium disabled:opacity-50"
             >
-              <option value="Workflow">Workflow</option>
-              <option value="Communication">Communication</option>
-            </select>
+              + Add Element
+            </button>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Side Panel Description</label>
-            <textarea
-              value={editedTemplate.sidePanelDescription || ''}
-              onChange={(e) => setEditedTemplate({ ...editedTemplate, sidePanelDescription: e.target.value })}
-              disabled={loading}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
-              rows={2}
-              placeholder="Description shown in the side panel"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Map Description</label>
-            <MapDescriptionInput
-              value={editedTemplate.description}
-              onChange={(value) => setEditedTemplate({ ...editedTemplate, description: value })}
-              uiElements={editedTemplate.sidePanelElements}
-              disabled={loading}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Icon</label>
-            <div className="grid grid-cols-5 gap-2">
-              {AVAILABLE_ICONS.map((iconOption) => {
-                const IconComponent = iconOption.component;
-                const isSelected = editedTemplate.icon === iconOption.name;
-                const iconColor = getIconColor(editedTemplate.iconColor || 'purple');
-                
-                return (
-                  <button
-                    key={iconOption.name}
-                    type="button"
-                    onClick={() => setEditedTemplate({ ...editedTemplate, icon: iconOption.name })}
-                    disabled={loading}
-                    className={`p-3 rounded-lg border-2 transition-all duration-200 disabled:opacity-50 ${
-                      isSelected
-                        ? 'border-[#4D3EE0] bg-blue-50'
-                        : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div 
-                      className="w-6 h-6 rounded flex items-center justify-center mx-auto"
-                      style={{ backgroundColor: iconColor.bg }}
-                    >
-                      <IconComponent className="w-4 h-4" style={{ color: iconColor.iconColor }} />
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Icon Color</label>
-            <div className="flex space-x-3">
-              {ICON_COLORS.map((colorOption) => {
-                const isSelected = (editedTemplate.iconColor || 'purple') === colorOption.value;
-                const IconComponent = getIconComponent(editedTemplate.icon);
-                
-                return (
-                  <button
-                    key={colorOption.value}
-                    type="button"
-                    onClick={() => setEditedTemplate({ ...editedTemplate, iconColor: colorOption.value })}
-                    disabled={loading}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg border-2 transition-all duration-200 disabled:opacity-50 ${
-                      isSelected
-                        ? 'border-[#4D3EE0] bg-blue-50'
-                        : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div 
-                      className="w-6 h-6 rounded flex items-center justify-center"
-                      style={{ backgroundColor: colorOption.bg }}
-                    >
-                      <IconComponent className="w-4 h-4" style={{ color: colorOption.iconColor }} />
-                    </div>
-                    <span className="text-sm font-medium text-slate-700">{colorOption.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <label className="block text-sm font-medium text-slate-700">UI Elements</label>
-              <button
-                onClick={addUIElement}
+          <div className="space-y-3">
+            {filteredElements.map((element, index) => (
+              <UIElementEditor
+                key={element.id}
+                element={element}
+                onUpdate={(updates) => updateUIElement(element.id, updates)}
+                onRemove={() => removeUIElement(element.id)}
+                onMoveUp={() => moveUIElement(element.id, 'up')}
+                onMoveDown={() => moveUIElement(element.id, 'down')}
+                canMoveUp={index > 0}
+                canMoveDown={index < filteredElements.length - 1}
                 disabled={loading}
-                className="text-sm text-gray-600 hover:text-gray-700 font-medium disabled:opacity-50"
-              >
-                + Add Element
-              </button>
-            </div>
-            <div className="space-y-3">
-              {editedTemplate.sidePanelElements.map((element, index) => (
-                <UIElementEditor
-                  key={element.id}
-                  element={element}
-                  onUpdate={(updates) => updateUIElement(element.id, updates)}
-                  onRemove={() => removeUIElement(element.id)}
-                  onMoveUp={() => moveUIElement(element.id, 'up')}
-                  onMoveDown={() => moveUIElement(element.id, 'down')}
-                  canMoveUp={index > 0}
-                  canMoveDown={index < editedTemplate.sidePanelElements.length - 1}
-                  disabled={loading}
-                  allElements={editedTemplate.sidePanelElements}
-                />
-              ))}
-            </div>
+                allElements={editedTemplate.sidePanelElements}
+                tabSelector
+                onTabChange={tab => updateUIElement(element.id, { tab })}
+              />
+            ))}
+            {filteredElements.length === 0 && (
+              <div className="text-center py-3 border-2 border-dashed border-slate-300 rounded text-xs text-slate-500">
+                No elements in this tab yet. Click "+ Add Element" to create one.
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -796,9 +722,11 @@ interface UIElementEditorProps {
   canMoveDown: boolean;
   disabled?: boolean;
   allElements: UIElement[];
+  tabSelector?: boolean;
+  onTabChange?: (tab: 'Configuration' | 'Advanced' | 'User Interface') => void;
 }
 
-function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, canMoveUp, canMoveDown, disabled, allElements }: UIElementEditorProps) {
+function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, canMoveUp, canMoveDown, disabled, allElements, tabSelector, onTabChange }: UIElementEditorProps) {
   const addOption = () => {
     const currentOptions = element.options || [];
     onUpdate({ options: [...currentOptions, ''] });
@@ -886,6 +814,29 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
 
   return (
     <div className="p-4 border border-slate-200 rounded-lg bg-slate-50">
+      {/* Tab Selector Dropdown */}
+      {/* {tabSelector && (
+        <div className="mb-3">
+          <label className="block text-xs font-medium text-slate-600 mb-1">Tab</label>
+          <select
+            value={element.tab || 'Configuration'}
+            onChange={e => {
+              const tab = e.target.value as 'Configuration' | 'Advanced' | 'User Interface';
+              if (onTabChange) {
+                onTabChange(tab);
+              } else {
+                onUpdate({ tab });
+              }
+            }}
+            disabled={disabled}
+            className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+          >
+            <option value="Configuration">Configuration</option>
+            <option value="Advanced">Advanced</option>
+            <option value="User Interface">User Interface</option>
+          </select>
+        </div>
+      )} */}
       <div className="flex items-center justify-between mb-3">
         <select
           value={element.type}
@@ -903,6 +854,8 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
           <option value="file-upload">File Upload</option>
           <option value="section-divider">Section Divider</option>
           <option value="text-block">Text Block</option>
+          <option value="number">Numerical Input</option>
+          <option value="date">Date Picker</option>
         </select>
         <div className="flex items-center space-x-1">
           <button
@@ -950,7 +903,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
             className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
           />
         </div>
-        {element.type !== 'section-divider' && element.type !== 'text-block' && (
+        {element.type !== 'section-divider' && element.type !== 'text-block' && element.type !== 'number' && element.type !== 'date' && element.type !== 'radio' && (
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Placeholder</label>
             <input
@@ -962,7 +915,50 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
             />
           </div>
         )}
+        {element.type === 'date' && (
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Placeholder</label>
+            <input
+              type="text"
+              value={element.placeholder || ''}
+              onChange={(e) => onUpdate({ placeholder: e.target.value })}
+              disabled={disabled}
+              className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+              placeholder="e.g. Select a date"
+            />
+          </div>
+        )}
       </div>
+      {/* Half-size input checkbox for text, dropdown, date, number */}
+      {['text', 'dropdown', 'date', 'number'].includes(element.type) && (
+        <div className="flex items-center mb-3">
+          <input
+            type="checkbox"
+            id={`half-size-${element.id}`}
+            checked={element.halfSize || false}
+            onChange={e => onUpdate({ halfSize: e.target.checked })}
+            disabled={disabled}
+            className="mr-2 disabled:opacity-50"
+          />
+          <label htmlFor={`half-size-${element.id}`} className="text-xs text-slate-600">
+            Half-size input
+          </label>
+        </div>
+      )}
+      {/* Default text for text and textarea */}
+      {['text', 'textarea'].includes(element.type) && (
+        <div className="mb-3">
+          <label className="block text-xs font-medium text-slate-600 mb-1">Default Text</label>
+          <input
+            type="text"
+            value={typeof element.defaultValue === 'string' ? element.defaultValue : ''}
+            onChange={e => onUpdate({ defaultValue: e.target.value })}
+            disabled={disabled}
+            className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+            placeholder="Optional default text"
+          />
+        </div>
+      )}
 
       {(element.type === 'dropdown' || element.type === 'radio') && (
         <div className="mb-3">
@@ -1003,6 +999,21 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
               </div>
             )}
           </div>
+          {/* Default option selector */}
+          <div className="mt-2">
+            <label className="block text-xs font-medium text-slate-600 mb-1">Default Selected Option</label>
+            <select
+              value={typeof element.defaultValue === 'string' ? element.defaultValue : ''}
+              onChange={e => onUpdate({ defaultValue: e.target.value || undefined })}
+              disabled={disabled || !element.options || element.options.length === 0}
+              className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+            >
+              <option value="">None</option>
+              {element.options && element.options.map((option, idx) => (
+                <option key={idx} value={option}>{option}</option>
+              ))}
+            </select>
+          </div>
         </div>
       )}
 
@@ -1024,7 +1035,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
         </div>
       )}
 
-      {element.type !== 'section-divider' && element.type !== 'text-block' && element.type !== 'button' && (
+      {/* {element.type !== 'section-divider' && element.type !== 'text-block' && element.type !== 'button' && (
         <div className="flex items-center mb-3">
           <input
             type="checkbox"
@@ -1038,7 +1049,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
             Required field
           </label>
         </div>
-      )}
+      )} */}
 
       {/* Button-specific configurations */}
       {element.type === 'button' && (
@@ -1072,7 +1083,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
                       <button
                         key={iconOption.name}
                         type="button"
-                        onClick={() => onUpdate({ icon: iconOption.name })}
+                        onClick={() => onUpdate({ icon: normalizeIconName(iconOption.name) })}
                         disabled={disabled}
                         className={`p-2 rounded border transition-all duration-200 disabled:opacity-50 ${
                           isSelected
@@ -1167,7 +1178,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
                 className="mr-2 disabled:opacity-50"
               />
               <label htmlFor={`conditional-followup-${element.id}`} className="text-xs text-slate-600">
-                Enable conditional follow-ups
+                Has follow-up elements
               </label>
             </div>
             {element.hasConditionalFollowUps && (
@@ -1300,6 +1311,99 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {element.type === 'number' && (
+        <>
+          <div className="mb-3">
+            <label className="block text-xs font-medium text-slate-600 mb-1">Default Value</label>
+            <input
+              type="number"
+              value={(typeof element.defaultValue === 'number' || typeof element.defaultValue === 'string') ? element.defaultValue : ''}
+              onChange={e => onUpdate({ defaultValue: e.target.value === '' ? undefined : Number(e.target.value) })}
+              className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              required
+              placeholder="Default value"
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Min</label>
+              <input
+                type="number"
+                value={element.min ?? ''}
+                onChange={e => onUpdate({ min: e.target.value === '' ? undefined : Number(e.target.value) })}
+                className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Min"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Max</label>
+              <input
+                type="number"
+                value={element.max ?? ''}
+                onChange={e => onUpdate({ max: e.target.value === '' ? undefined : Number(e.target.value) })}
+                className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Max"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Step</label>
+              <input
+                type="number"
+                value={element.step ?? ''}
+                onChange={e => onUpdate({ step: e.target.value === '' ? undefined : Number(e.target.value) })}
+                className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Step"
+              />
+            </div>
+          </div>
+        </>
+      )}
+
+      {element.type === 'date' && (
+        <div className="mb-3 grid grid-cols-3 gap-2">
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Default Value</label>
+            <input
+              type="date"
+              value={typeof element.defaultValue === 'string' ? element.defaultValue : ''}
+              onChange={e => onUpdate({ defaultValue: e.target.value })}
+              className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="YYYY-MM-DD"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Min</label>
+            <input
+              type="date"
+              value={typeof element.min === 'string' ? element.min : ''}
+              onChange={e => onUpdate({ min: e.target.value })}
+              className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="YYYY-MM-DD"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Max</label>
+            <input
+              type="date"
+              value={typeof element.max === 'string' ? element.max : ''}
+              onChange={e => onUpdate({ max: e.target.value })}
+              className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="YYYY-MM-DD"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Step (days)</label>
+            <input
+              type="number"
+              value={element.step ?? ''}
+              onChange={e => onUpdate({ step: e.target.value === '' ? undefined : Number(e.target.value) })}
+              className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Step"
+            />
+          </div>
         </div>
       )}
     </div>
@@ -1511,8 +1615,9 @@ function CreateTemplateModal({ onClose, onSave, loading }: CreateTemplateModalPr
   };
 
   const getIconComponent = (iconName: string) => {
-    const iconOption = AVAILABLE_ICONS.find(i => i.name === iconName);
-    return iconOption ? iconOption.component : Settings;
+    const normalized = normalizeIconName(iconName);
+    const iconDef = AVAILABLE_ICONS.find(i => i.name === normalized);
+    return iconDef ? iconDef.component : Settings;
   };
 
   const getIconColor = (color: string) => {
@@ -1586,7 +1691,7 @@ function CreateTemplateModal({ onClose, onSave, loading }: CreateTemplateModalPr
                   <button
                     key={iconOption.name}
                     type="button"
-                    onClick={() => setIcon(iconOption.name)}
+                    onClick={() => setIcon(normalizeIconName(iconOption.name))}
                     disabled={loading}
                     className={`p-3 rounded-lg border-2 transition-all duration-200 disabled:opacity-50 ${
                       isSelected
@@ -1626,10 +1731,10 @@ function CreateTemplateModal({ onClose, onSave, loading }: CreateTemplateModalPr
                     }`}
                   >
                     <div 
-                      className="w-6 h-6 rounded flex items-center justify-center"
+                      className="w-3 h-3 rounded-full flex items-center justify-center"
                       style={{ backgroundColor: colorOption.bg }}
                     >
-                      <IconComponent className="w-4 h-4" style={{ color: colorOption.iconColor }} />
+                      {/* <IconComponent className="w-4 h-4" style={{ color: colorOption.iconColor }} /> */}
                     </div>
                     <span className="text-sm font-medium text-slate-700">{colorOption.name}</span>
                   </button>
