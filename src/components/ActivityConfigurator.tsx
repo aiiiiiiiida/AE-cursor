@@ -1,44 +1,35 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Trash2, Edit, Pencil, Settings, Eye, Save, X, Mail, Globe, Database, FileText, Calendar, Users, Zap, Clock, CheckCircle, AlertCircle, ArrowLeft, Play, Upload, Minus, Type, ToggleLeft, Split, Hourglass, ExternalLink,
-  Search,
-  User,
-  MessageCircle,
-  Image,
-  Tag,
-  CheckSquare,
-  Video,
-  Bot,
-  ChevronUp,
-  ChevronDown,
-  MoreVertical } from 'lucide-react';
+import * as Lucide from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { ActivityTemplate, UIElement, ConditionalFollowUp } from '../types';
 import { DynamicForm } from './DynamicForm';
+import { ChevronUp, ChevronDown, X, Plus } from 'lucide-react';
+import ScreeningQuestionsModule from './ScreeningQuestionsModule';
 
 const AVAILABLE_ICONS = [
   
-  { name: 'Zap', component: Zap },
-  { name: 'Mail', component: Mail },
-  { name: 'Globe', component: Globe },
-  { name: 'Database', component: Database },
-  { name: 'FileText', component: FileText },
-  { name: 'Calendar', component: Calendar },
-  { name: 'Users', component: Users },
-  { name: 'Clock', component: Clock },
-  { name: 'CheckCircle', component: CheckCircle },
-  { name: 'Split', component: Split },
-  { name: 'Plus', component: Plus },
-  { name: 'Hourglass', component: Hourglass },
-  { name: 'Search', component: Search },
-  { name: 'User', component: User },
-  { name: 'Message', component: MessageCircle },
-  { name: 'Image', component: Image },
-  { name: 'Tag', component: Tag },
-  { name: 'Checklist', component: CheckSquare },
-  { name: 'Video', component: Video },
-   { name: 'ExternalLink', component: ExternalLink },
-  { name: 'Robot', component: Bot }
+  { name: 'Zap', component: Lucide.Zap },
+  { name: 'Mail', component: Lucide.Mail },
+  { name: 'Globe', component: Lucide.Globe },
+  { name: 'Database', component: Lucide.Database },
+  { name: 'FileText', component: Lucide.FileText },
+  { name: 'Calendar', component: Lucide.Calendar },
+  { name: 'Users', component: Lucide.Users },
+  { name: 'Clock', component: Lucide.Clock },
+  { name: 'CheckCircle', component: Lucide.CheckCircle },
+  { name: 'Split', component: Lucide.Split },
+  { name: 'Plus', component: Lucide.Plus },
+  { name: 'Hourglass', component: Lucide.Hourglass },
+  { name: 'Search', component: Lucide.Search },
+  { name: 'User', component: Lucide.User },
+  { name: 'Message', component: Lucide.MessageCircle },
+  { name: 'Image', component: Lucide.Image },
+  { name: 'Tag', component: Lucide.Tag },
+  { name: 'Checklist', component: Lucide.CheckSquare },
+  { name: 'Video', component: Lucide.Video },
+   { name: 'ExternalLink', component: Lucide.ExternalLink },
+  { name: 'Robot', component: Lucide.Bot }
 ];
 
 const ICON_COLORS = [
@@ -116,12 +107,11 @@ export function ActivityConfigurator() {
 
   const handleUpdateTemplate = async (template: ActivityTemplate) => {
     try {
-      if (!template.id) {
-        // New template: create it
-        const created = await createActivityTemplate(template);
+      if (!template.id || (template.id as any).startsWith?.('tmp-')) {
+        const { id: _ignore, createdAt: _c, updatedAt: _u, ...data } = template as any;
+        const created = await createActivityTemplate(data);
         setEditingTemplate(created);
       } else {
-        // Existing template: update it
         await updateActivityTemplate(template);
         setEditingTemplate(null);
       }
@@ -143,10 +133,20 @@ export function ActivityConfigurator() {
     setPreviewMode(false); // Reset preview mode when selecting a new template
   };
 
-  const getIconComponent = (iconName: string) => {
+  const getIconComponent = (iconName: string, customSvg?: string) => {
+    if (customSvg && iconName === 'Custom') {
+      // Return a component rendering the raw SVG
+      return () => (
+        <span
+          className="w-4 h-4 inline-flex"
+          dangerouslySetInnerHTML={{ __html: customSvg }}
+        />
+      );
+    }
     const normalized = normalizeIconName(iconName);
     const icon = AVAILABLE_ICONS.find(i => i.name === normalized);
-    return icon ? icon.component : Settings;
+    if (icon) return icon.component;
+    return (Lucide as any)[normalized] || Lucide.Settings;
   };
 
   const getIconColor = (color: string) => {
@@ -177,7 +177,7 @@ export function ActivityConfigurator() {
             onClick={() => navigate('/')}
             className="flex items-center space-x-2 text-slate-600 hover:text-slate-900 transition-colors"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <Lucide.ArrowLeft className="w-5 h-5" />
           </button>
           <div>
             <h1 className="text-lg font-semibold text-slate-900">Activity Templates</h1>
@@ -185,6 +185,9 @@ export function ActivityConfigurator() {
         </div>
         <button
           onClick={() => setEditingTemplate({
+            id: `tmp-${Date.now()}`,
+            createdAt: new Date(),
+            updatedAt: new Date(),
             name: '',
             category: 'Workflow',
             sidePanelDescription: '',
@@ -196,7 +199,7 @@ export function ActivityConfigurator() {
           disabled={state.loading}
           className="bg-[#4D3EE0] text-sm text-white px-4 py-2 rounded-xl font-normal hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <Plus className="w-4 h-4" />
+          <Lucide.Plus className="w-4 h-4" />
           <span>Create activity</span>
         </button>
       </div>
@@ -206,7 +209,7 @@ export function ActivityConfigurator() {
         <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-slate-200 p-6 shadow-sm">
           <div className="space-y-3">
             {state.activityTemplates.map((template) => {
-              const IconComponent = getIconComponent(template.icon);
+              const IconComponent = getIconComponent(template.icon, template.customIconSvg);
               const iconColor = getIconColor(template.iconColor || 'purple');
               
               return (
@@ -240,7 +243,7 @@ export function ActivityConfigurator() {
                         className="p-1 text-slate-400 hover:text-slate-600 transition-colors"
                         aria-label="More actions"
                       >
-                        <MoreVertical className="w-4 h-4" />
+                        <Lucide.MoreVertical className="w-4 h-4" />
                       </button>
                       {openMenuId === template.id && (
                         <div className="absolute right-0 top-8 w-32 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-10">
@@ -252,7 +255,7 @@ export function ActivityConfigurator() {
                             }}
                             className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Lucide.Trash2 className="w-4 h-4" />
                             <span>Delete</span>
                           </button>
                         </div>
@@ -275,10 +278,11 @@ export function ActivityConfigurator() {
               previewMode={previewMode}
               onTogglePreview={() => setPreviewMode(!previewMode)}
               loading={state.loading}
+              activityTemplates={state.activityTemplates} // Pass all templates
             />
           ) : (
             <div className="text-center py-12">
-              <Settings className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+              <Lucide.Settings className="w-12 h-12 text-slate-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-slate-900 mb-2">Select a Template</h3>
               <p className="text-slate-600">Choose a template from the list to edit its configuration</p>
             </div>
@@ -305,7 +309,7 @@ export function ActivityConfigurator() {
                 onClick={() => setTemplateToDelete(null)}
                 aria-label="Close"
               >
-                <X className="w-5 h-5" />
+                <Lucide.X className="w-5 h-5" />
               </button>
             </div>
             {/* Divider */}
@@ -350,17 +354,29 @@ interface TemplateEditorProps {
   previewMode: boolean;
   onTogglePreview: () => void;
   loading: boolean;
+  activityTemplates: ActivityTemplate[]; // New prop
 }
 
-function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePreview, loading }: TemplateEditorProps) {
+function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePreview, loading, activityTemplates }: TemplateEditorProps) {
   const [editedTemplate, setEditedTemplate] = useState<ActivityTemplate>(template);
   const [activeTab, setActiveTab] = useState<'Configuration' | 'Advanced' | 'User Interface'>('Configuration');
   // Track all categories used in this session
-  const [categories, setCategories] = useState<string[]>(['Workflow', 'Communication']);
+  const [categories, setCategories] = useState<string[]>([]);
   const [categoryInput, setCategoryInput] = useState<string>(template.category || 'Workflow');
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [showSvgInput, setShowSvgInput] = useState(false);
+  const [svgDraft, setSvgDraft] = useState<string>('');
 
-  // Update categories if a new one is entered
+  // Update categories from all activity templates
+  useEffect(() => {
+    const allCategories = activityTemplates
+      .map(t => t.category?.trim())
+      .filter(Boolean) as string[];
+    const uniqueCategories = Array.from(new Set([...(allCategories), 'Workflow', 'Communication']));
+    setCategories(uniqueCategories);
+  }, [activityTemplates]);
+
+  // Update categories if a new one is entered (keep this for typed-in new ones)
   useEffect(() => {
     if (categoryInput && !categories.some(cat => cat.toLowerCase() === categoryInput.toLowerCase())) {
       setCategories(prev => [...prev, categoryInput]);
@@ -437,10 +453,20 @@ function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePrevi
     onSave(editedTemplate);
   };
 
-  const getIconComponent = (iconName: string) => {
+  const getIconComponent = (iconName: string, customSvg?: string) => {
+    if (customSvg && iconName === 'Custom') {
+      // Return a component rendering the raw SVG
+      return () => (
+        <span
+          className="w-4 h-4 inline-flex"
+          dangerouslySetInnerHTML={{ __html: customSvg }}
+        />
+      );
+    }
     const normalized = normalizeIconName(iconName);
     const icon = AVAILABLE_ICONS.find(i => i.name === normalized);
-    return icon ? icon.component : Settings;
+    if (icon) return icon.component;
+    return (Lucide as any)[normalized] || Lucide.Settings;
   };
 
   const getIconColor = (color: string) => {
@@ -466,12 +492,12 @@ function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePrevi
     >
       {previewMode ? (
         <>
-          <Pencil className="w-3.5 h-3.5 inline mr-1" />
+          <Lucide.Pencil className="w-3.5 h-3.5 inline mr-1" />
           Edit
         </>
       ) : (
         <>
-          <Eye className="w-4 h-4 inline mr-1" />
+          <Lucide.Eye className="w-4 h-4 inline mr-1" />
           Preview
         </>
       )}
@@ -503,36 +529,60 @@ function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePrevi
               <input
                 type="text"
                 value={categoryInput}
-                onChange={e => {
-                  setCategoryInput(e.target.value);
-                  setEditedTemplate({ ...editedTemplate, category: e.target.value });
-                }}
+                onChange={e => setCategoryInput(e.target.value)}
                 onFocus={() => setShowCategoryDropdown(true)}
                 onBlur={() => setTimeout(() => setShowCategoryDropdown(false), 150)}
                 disabled={loading}
                 className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
                 placeholder="Enter or select a category"
-                list="activity-category-list"
                 autoComplete="off"
               />
-              {showCategoryDropdown && categories.length > 0 && (
+              {showCategoryDropdown && (
                 <div className="absolute z-10 bg-white border border-slate-200 rounded shadow w-full mt-1 max-h-40 overflow-y-auto">
-                  {[...new Set(categories.map(cat => cat.trim().toLowerCase()))]
-                    .map(lowerCat => categories.find(cat => cat.trim().toLowerCase() === lowerCat)!)
-                    .map(cat => (
-                      <button
-                        key={cat}
-                        type="button"
-                        className={`w-full text-left px-3 py-2 hover:bg-slate-100 text-sm ${cat === categoryInput ? 'bg-blue-50 font-semibold' : ''}`}
-                        onMouseDown={() => {
-                          setCategoryInput(cat);
-                          setEditedTemplate({ ...editedTemplate, category: cat });
-                          setShowCategoryDropdown(false);
-                        }}
-                      >
-                        {cat}
-                      </button>
-                    ))}
+                  {(() => {
+                    // Only show unique, full categories from templates
+                    const lowerInput = categoryInput.trim().toLowerCase();
+                    const uniqueCategories = Array.from(new Set(
+                      activityTemplates
+                        .map(t => t.category?.trim())
+                        .filter(Boolean)
+                    ));
+                    const hasExactMatch = uniqueCategories.some(cat => cat.toLowerCase() === lowerInput);
+                    const dropdownItems = [];
+                    if (categoryInput && !hasExactMatch) {
+                      dropdownItems.push(
+                        <button
+                          key="add-new"
+                          type="button"
+                          className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm font-medium text-[#2927B2] border-b border-slate-100"
+                          onMouseDown={() => {
+                            setCategoryInput(categoryInput);
+                            setEditedTemplate({ ...editedTemplate, category: categoryInput });
+                            setShowCategoryDropdown(false);
+                          }}
+                        >
+                          {`+ Add "${categoryInput}"`}
+                        </button>
+                      );
+                    }
+                    dropdownItems.push(
+                      ...uniqueCategories.map(cat => (
+                        <button
+                          key={cat}
+                          type="button"
+                          className={`w-full text-left px-3 py-2 hover:bg-slate-100 text-sm ${cat === categoryInput ? 'bg-blue-50 font-semibold' : ''}`}
+                          onMouseDown={() => {
+                            setCategoryInput(cat);
+                            setEditedTemplate({ ...editedTemplate, category: cat });
+                            setShowCategoryDropdown(false);
+                          }}
+                        >
+                          {cat}
+                        </button>
+                      ))
+                    );
+                    return dropdownItems;
+                  })()}
                 </div>
               )}
             </div>
@@ -561,7 +611,7 @@ function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePrevi
               <div className="flex flex-wrap gap-1">
 
                 {AVAILABLE_ICONS.map((iconOption) => {
-                  const IconComponent = iconOption.component;
+                  const IconComponent = getIconComponent(iconOption.name, editedTemplate.customIconSvg);
                   const isSelected = editedTemplate.icon === iconOption.name;
                   const iconColor = getIconColor(editedTemplate.iconColor || 'purple');
                   return (
@@ -585,6 +635,54 @@ function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePrevi
                     </button>
                   );
                 })}
+                {/* Button to add custom SVG icon */}
+                {/* <button
+                  type="button"
+                  onClick={() => setShowSvgInput(prev => !prev)}
+                  disabled={loading}
+                  className="flex items-center px-2 py-1 border border-dashed border-slate-300 rounded-lg text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                >
+                  <Plus className="w-3 h-3 mr-1" /> Add custom SVG
+                </button> */}
+
+                {showSvgInput && (
+                  <div className="w-full mt-2 space-y-2">
+                    <textarea
+                      value={svgDraft}
+                      onChange={e => setSvgDraft(e.target.value)}
+                      rows={4}
+                      placeholder="Paste SVG markup here"
+                      className="w-full px-2 py-1 border text-xs font-mono border-slate-300 rounded"
+                    />
+                    {svgDraft.trim() !== '' && (
+                      <div className="flex items-center space-x-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditedTemplate({ ...editedTemplate, icon: 'Custom', customIconSvg: svgDraft });
+                            setShowSvgInput(false);
+                            setSvgDraft('');
+                          }}
+                          className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
+                        >
+                          Save SVG
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setShowSvgInput(false); setSvgDraft(''); }}
+                          className="px-3 py-1 border text-xs rounded hover:bg-slate-100"
+                        >
+                          Cancel
+                        </button>
+                        {/* preview */}
+                        <span
+                          className="w-6 h-6 inline-flex border border-slate-200 rounded"
+                          dangerouslySetInnerHTML={{ __html: svgDraft }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
             <div>
@@ -1011,6 +1109,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
           <option value="text-block">Text Block</option>
           <option value="number">Numerical Input</option>
           <option value="date">Date Picker</option>
+          <option value="screening-questions">Screening Questions Module</option>
         </select>
         <div className="flex items-center space-x-1">
           <button
@@ -1050,7 +1149,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
               placeholder="Enter text content..."
             />
           </div>
-        ) : (
+        ) : element.type !== 'section-divider' && element.type !== 'screening-questions' && (
           <div className={element.type === 'toggle' ? 'col-span-2' : ''}>
             <label className="block text-xs font-medium text-slate-600 mb-1">Label</label>
             <input
@@ -1062,7 +1161,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
             />
           </div>
         )}
-        {element.type !== 'section-divider' && element.type !== 'text-block' && element.type !== 'number' && element.type !== 'date' && element.type !== 'radio' && element.type !== 'toggle' && (
+        {element.type !== 'section-divider' && element.type !== 'text-block' && element.type !== 'number' && element.type !== 'date' && element.type !== 'radio' && element.type !== 'toggle' && element.type !== 'screening-questions' && (
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Placeholder</label>
             <input
@@ -1120,7 +1219,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
         </div>
       )}
 
-      {(element.type === 'dropdown' || element.type === 'radio') && (
+      {(element.type === 'dropdown' || element.type === 'radio' || element.type === 'checkbox') && (
         <div className="mb-3">
           <div className="flex items-center justify-between mb-2">
             <label className="block text-xs font-medium text-slate-600">Options</label>

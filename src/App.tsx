@@ -5,6 +5,7 @@ import { Layout } from './components/Layout';
 import { WorkflowsTable } from './components/WorkflowsTable';
 import { ActivityConfigurator } from './components/ActivityConfigurator';
 import { WorkflowBuilder } from './components/WorkflowBuilder';
+import ScreeningQuestionsModule from './components/ScreeningQuestionsModule';
 
 function App() {
   return (

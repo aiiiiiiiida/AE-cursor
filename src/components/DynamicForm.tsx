@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { UIElement, ConditionalFollowUp } from '../types';
 import { Upload, Minus, X, ChevronDown, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { Play, Zap, Mail, Globe, Database, FileText, Calendar, Users, Clock, CheckCircle, AlertCircle, Settings, Split, Hourglass, MessageCircle, CheckSquare, Search, User, MessageCircle as Message, Image, Tag, ListChecks as Checklist, Video, ExternalLink, Notebook as Robot } from 'lucide-react';
+import ScreeningQuestionsModule from './ScreeningQuestionsModule';
 
 const AVAILABLE_ICONS = [
   { name: 'Play', component: Play },
@@ -104,6 +105,7 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
 
   // Only show elements for the active tab
   const filteredElements = elements.filter(el => (el.tab || 'Configuration') === activeTab);
+  console.log('DYNAMICFORM filteredElements', filteredElements);
 
   // Use the top-level elements as the source of truth for cloning
   const baseElements = originalElements || elements;
@@ -323,9 +325,10 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
   // Instead, when rendering each element, if it's a button, render dynamicElements[element.id] above it.
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <>
+      <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-4">
       {showTabs && (
-  <div className="flex bg-[#F5F7FA] rounded-xl p-0.5 w-full max-w-full mb-4">
+  <div className="flex bg-[#F5F7FA] rounded-xl p-0.5 w-full max-w-full mb-4 md:col-span-2">
     {orderedTabs.map((tab, idx) => (
       <button
         key={tab}
@@ -349,20 +352,165 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
 )}
 
       {filteredElements.map((element, index) => {
+        if (element.type === 'screening-questions') {
+          return (
+            <div key={element.id} className="md:col-span-2">
+              <ScreeningQuestionsModule />
+            </div>
+          );
+        }
+        // Minimal working radio rendering block (only one return per element)
+        if (element.type === 'radio') {
+          // Render radio group with conditional follow-ups and horizontal layout
+          return (
+            <div key={element.id} className="space-y-2 md:col-span-2">
+              <label className="block text-[13px] font-medium text-slate-700 mb-2">{element.label}</label>
+              <div className="flex flex-wrap gap-4">
+                {element.options?.map((option) => (
+                  <label key={option} className="flex items-center space-x-2 text-sm text-slate-700 mb-2">
+                    <span className="relative inline-flex items-center">
+                      <input
+                        type="radio"
+                        name={element.id}
+                        value={option}
+                        checked={formValues[element.id] === option}
+                        onChange={() => handleValueChange(element.id, option)}
+                        required={element.required}
+                        className="appearance-none w-[18px] h-[18px] min-w-[18px] min-h-[18px] rounded-full border border-[#AEB5C2] checked:border-[#4D3EE0] focus:ring-0 outline-none transition-colors duration-150 bg-white"
+                      />
+                      {formValues[element.id] === option && (
+                        <span className="absolute left-1/2 top-1/2 w-2 h-2 bg-[#4D3EE0] rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"></span>
+                      )}
+                    </span>
+                    <span>{option}</span>
+                  </label>
+                ))}
+              </div>
+              {/* Render conditional follow-ups if any */}
+              {(() => {
+                const conditionalElements = getConditionalFollowUps(element);
+                if (conditionalElements.length > 0) {
+                  return (
+                    <div className="mt-4">
+                      <DynamicForm
+                        elements={conditionalElements}
+                        values={formValues}
+                        onChange={onChange}
+                        level={level + 1}
+                        originalElements={baseElements}
+                      />
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+          );
+        }
+        // Minimal working checkbox rendering block (multi-select)
+        if (element.type === 'checkbox') {
+          return (
+            <div key={element.id} className="space-y-2 md:col-span-2">
+              <label className="block text-[13px] font-medium text-slate-700 mb-2">{element.label}</label>
+              {element.options?.map((option) => (
+                <label key={option} className="flex items-center space-x-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    name={element.id}
+                    value={option}
+                    checked={Array.isArray(formValues[element.id]) ? formValues[element.id].includes(option) : false}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      const prev = Array.isArray(formValues[element.id]) ? formValues[element.id] : [];
+                      if (checked) {
+                        handleValueChange(element.id, [...prev, option]);
+                      } else {
+                        handleValueChange(element.id, prev.filter((v) => v !== option));
+                      }
+                    }}
+                    className="text-[#4D3EE0] focus:ring-0"
+                  />
+                  <span>{option}</span>
+                </label>
+              ))}
+            </div>
+          );
+        }
+        // Minimal working multi-select dropdown rendering block
+        if (element.type === 'dropdown' && element.multiselect) {
+          console.log('MULTISELECT DROPDOWN DEBUG', element);
+          return (
+            <div key={element.id} className="space-y-2 md:col-span-2">
+              <label className="block text-[13px] font-medium text-slate-700 mb-2">{element.label}</label>
+              <div className="relative" ref={el => el && (dropdownRefs.current[element.id] = el)}>
+                <div
+                  onClick={() => toggleDropdown(element.id)}
+                  className="w-full min-h-[2.5rem] px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer bg-white flex items-center justify-between text-[13px]"
+                >
+                  <div className="flex-1 flex flex-wrap gap-1 items-center">
+                    {formValues[element.id] && formValues[element.id].length > 0 ? (
+                      formValues[element.id].map((selectedValue: string) => (
+                        <span
+                          key={selectedValue}
+                          className="inline-flex items-center px-2 py-1 rounded-2xl text-xs font-medium bg-gray-100 text-gray-800"
+                        >
+                          {selectedValue}
+                          <button
+                            type="button"
+                            onClick={e => {
+                              e.stopPropagation();
+                              removeMultiselectTag(element.id, selectedValue);
+                            }}
+                            className="ml-1 text-gray-600 hover:text-blue-800"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-slate-500 text-sm">{element.placeholder || 'Select options...'}</span>
+                    )}
+                  </div>
+                  <ChevronDown
+                    className={`w-4 h-4 text-slate-400 transition-transform ${
+                      openDropdowns.has(element.id) ? 'rotate-180' : ''
+                    }`}
+                  />
+                </div>
+                {openDropdowns.has(element.id) && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#8C95A8] rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
+                    {element.options?.map(option => (
+                      <div key={option} className="flex items-center p-2 hover:bg-slate-50">
+                        <input
+                          type="checkbox"
+                          id={`${element.id}-${option}`}
+                          checked={(formValues[element.id] || []).includes(option)}
+                          onChange={e => handleMultiselectChange(element.id, option, e.target.checked)}
+                          className="mr-3"
+                        />
+                        <label htmlFor={`${element.id}-${option}`} className="text-sm text-slate-700 cursor-pointer flex-1">
+                          {option}
+                        </label>
+                      </div>
+                    ))}
+                    {(!element.options || element.options.length === 0) && (
+                      <div className="p-4 text-center text-sm text-slate-500">
+                        No options available
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        }
+        // original rendering logic follows here
         if (element.type === 'button') {
           return (
             <div key={element.id} className={indentClass}>
-              {dynamicElements[element.id] && dynamicElements[element.id].length > 0 && (
-                <DynamicForm
-                  elements={dynamicElements[element.id]}
-                  values={formValues}
-                  onChange={onChange}
-                  level={level + 1}
-                  originalElements={baseElements}
-                />
-              )}
+              {/* Dynamic elements added by this button (if any) will be rendered after the optional title, inside the button block below */}
               {element.type === 'toggle' && (
-                <div key={element.id} className="flex items-center justify-between w-full gap-2">
+                <div className="flex items-center justify-between w-full gap-2 md:col-span-2">
                   <span className="text-sm text-slate-700">{element.label}</span>
                   <button
                     type="button"
@@ -383,9 +531,11 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
               {element.type !== 'toggle' && (
                 <>
                   <div className="flex items-center justify-between">
-                    <label className="block text-[13px] font-medium text-slate-700 mb-2">
-                      {element.label}
-                    </label>
+                    {element.type !== 'button' && (
+                      <label className="block text-[13px] font-medium text-slate-700 mb-2">
+                        {element.label}
+                      </label>
+                    )}
                     {Object.values(dynamicElements).flat().some(de => de.id === element.id) && (
                       <button
                         type="button"
@@ -429,134 +579,13 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
                       required={element.required}
                       className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent text-[13px]"
                     >
-                      <option value="">Select an option</option>
+                      <option value="">{element.placeholder || 'Select an option'}</option>
                       {element.options?.map((option) => (
                         <option key={option} value={option}>
                           {option}
                         </option>
                       ))}
                     </select>
-                  )}
-
-                  {element.type === 'dropdown' && element.multiselect && (
-                    <div className="relative" ref={el => el && (dropdownRefs.current[element.id] = el)}>
-                      {/* Dropdown input with tags */}
-                      <div
-                        onClick={() => toggleDropdown(element.id)}
-                        className="w-full min-h-[2.5rem] px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer bg-white flex items-center justify-between text-[13px]"
-                      >
-                        <div className="flex-1 flex flex-wrap gap-1 items-center">
-                          {formValues[element.id] && formValues[element.id].length > 0 ? (
-                            formValues[element.id].map((selectedValue: string) => (
-                              <span
-                                key={selectedValue}
-                                className="inline-flex items-center px-2 py-1 rounded-2xl text-xs font-medium bg-gray-100 text-gray-800"
-                              >
-                                {selectedValue}
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    removeMultiselectTag(element.id, selectedValue);
-                                  }}
-                                  className="ml-1 text-gray-600 hover:text-blue-800"
-                                >
-                                  <X className="w-3 h-3" />
-                                </button>
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-slate-500 text-sm">Select options...</span>
-                          )}
-                        </div>
-                        <ChevronDown 
-                          className={`w-4 h-4 text-slate-400 transition-transform ${
-                            openDropdowns.has(element.id) ? 'rotate-180' : ''
-                          }`} 
-                        />
-                      </div>
-                      
-                      {/* Dropdown options */}
-                      {openDropdowns.has(element.id) && (
-                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-[#8C95A8] rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
-                          {element.options?.map((option) => (
-                            <div key={option} className="flex items-center p-2 hover:bg-slate-50">
-                              <input
-                                type="checkbox"
-                                id={`${element.id}-${option}`}
-                                checked={(formValues[element.id] || []).includes(option)}
-                                onChange={(e) => handleMultiselectChange(element.id, option, e.target.checked)}
-                                className="mr-3"
-                              />
-                              <label htmlFor={`${element.id}-${option}`} className="text-sm text-slate-700 cursor-pointer flex-1">
-                                {option}
-                              </label>
-                            </div>
-                          ))}
-                          {(!element.options || element.options.length === 0) && (
-                            <div className="p-4 text-center text-sm text-slate-500">
-                              No options available
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {element.type === 'radio' && (
-                    <div className="flex flex-wrap gap-2">
-                      {element.options?.map((option) => {
-                        const selected = formValues[element.id] === option;
-                        return (
-                          <label
-                            key={option}
-                            htmlFor={`${element.id}-${option}`}
-                            className={`flex items-center cursor-pointer px-0 py-0 rounded-xl transition-all text-[14px] font-medium
-                              ${selected ? '  text-[#464F5E]' : '  text-[#464F5E]'}
-                            `}
-                            style={{ minWidth: '120px' }}
-                          >
-                            <span className="relative flex items-center mr-2">
-                              <span
-                                className={`inline-block w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors
-                                  ${selected ? 'border-[#2927B2] bg-white' : 'border-[#AEB5C2] bg-white'}`}
-                              >
-                                {selected && (
-                                  <span className="block w-2.5 h-2.5 rounded-full bg-[#2927B2]" />
-                                )}
-                              </span>
-                            </span>
-                            <input
-                              type="radio"
-                              id={`${element.id}-${option}`}
-                              name={element.id}
-                              value={option}
-                              checked={selected}
-                              onChange={(e) => handleValueChange(element.id, e.target.value)}
-                              required={element.required}
-                              className="sr-only"
-                            />
-                            <span>{option}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {element.type === 'checkbox' && (
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id={element.id}
-                        checked={formValues[element.id] || false}
-                        onChange={(e) => handleValueChange(element.id, e.target.checked)}
-                        required={element.required}
-                        className="mr-2"
-                      />
-                      <label htmlFor={element.id} className="text-sm text-slate-700">
-                        {element.placeholder || 'Check this option'}
-                      </label>
-                    </div>
                   )}
 
                   {element.type === 'toggle' ? (
@@ -725,6 +754,19 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
                           {element.title}
                         </label>
                       )}
+
+                      {/* Render any dynamic elements this button has added AFTER the title and BEFORE the button itself */}
+                      {dynamicElements[element.id] && dynamicElements[element.id].length > 0 && (
+                        <div className="mb-4">
+                          <DynamicForm
+                            elements={dynamicElements[element.id]}
+                            values={formValues}
+                            onChange={onChange}
+                            level={level + 1}
+                            originalElements={baseElements}
+                          />
+                        </div>
+                      )}
                       <button
                         type="button"
                         onClick={() => handleButtonClick(element)}
@@ -753,7 +795,7 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
           const isDynamic = Object.values(dynamicElements).flat().some(de => de.id === element.id);
           if (element.type === 'toggle') {
             return (
-              <div key={element.id} className="flex items-center justify-between w-full gap-2">
+              <div key={element.id} className="flex items-center justify-between w-full gap-2 md:col-span-2">
                 <span className="text-sm text-slate-700">{element.label}</span>
                 <button
                   type="button"
@@ -773,7 +815,7 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
             );
           }
           // If halfSize, still render with half-size class, but not in a row
-          const halfSizeClass = element.halfSize && ['text', 'dropdown', 'date', 'number'].includes(element.type) ? 'max-w-[50%]' : '';
+          const halfSizeClass = element.halfSize && ['text', 'dropdown', 'date', 'number'].includes(element.type) ? 'md:col-span-1' : 'md:col-span-2';
           return (
             <div key={element.id} className={indentClass + ' ' + halfSizeClass}>
               {element.type === 'section-divider' && (
@@ -799,9 +841,11 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
               {element.type !== 'section-divider' && element.type !== 'text-block' && element.type !== 'button' && (
                 <>
                   <div className="flex items-center justify-between">
-                    <label className="block text-[13px] font-medium text-slate-700 mb-2">
-                      {element.label}
-                    </label>
+                    {element.type !== 'button' && (
+                      <label className="block text-[13px] font-medium text-slate-700 mb-2">
+                        {element.label}
+                      </label>
+                    )}
                     {isDynamic && (
                       <button
                         type="button"
@@ -845,7 +889,7 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
                       required={element.required}
                       className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent text-[13px]"
                     >
-                      <option value="">Select an option</option>
+                      <option value="">{element.placeholder || 'Select an option'}</option>
                       {element.options?.map((option) => (
                         <option key={option} value={option}>
                           {option}
@@ -1000,6 +1044,19 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
                       {element.title}
                     </label>
                   )}
+
+                  {/* Render dynamic elements (if any) between title and button */}
+                  {dynamicElements[element.id] && dynamicElements[element.id].length > 0 && (
+                    <div className="mb-4">
+                      <DynamicForm
+                        elements={dynamicElements[element.id]}
+                        values={formValues}
+                        onChange={onChange}
+                        level={level + 1}
+                        originalElements={baseElements}
+                      />
+                    </div>
+                  )}
                   <button
                     type="button"
                     onClick={() => handleButtonClick(element)}
@@ -1035,5 +1092,6 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
         </div>
       )}
     </form>
+    </>
   );
 }

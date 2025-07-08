@@ -5,7 +5,7 @@ export interface ConditionalFollowUp {
 
 export interface UIElement {
   id: string;
-  type: 'text' | 'dropdown' | 'radio' | 'checkbox' | 'button' | 'section-divider' | 'text-block' | 'toggle' | 'file-upload' | 'textarea' | 'number' | 'date';
+  type: 'text' | 'dropdown' | 'radio' | 'checkbox' | 'button' | 'section-divider' | 'text-block' | 'toggle' | 'file-upload' | 'textarea' | 'number' | 'date' | 'screening-questions';
   label: string;
   options?: string[];
   required?: boolean;
@@ -43,6 +43,7 @@ export interface ActivityTemplate {
   category: string; // New category field
   sidePanelDescription?: string;
   sidePanelElements: UIElement[];
+  customIconSvg?: string; // Optional raw SVG string for custom icons
   createdAt: Date;
   updatedAt: Date;
 }
