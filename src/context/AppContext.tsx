@@ -122,7 +122,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
 const AppContext = createContext<{
   state: AppState;
   dispatch: React.Dispatch<AppAction>;
-  createActivityTemplate: (template: Omit<ActivityTemplate, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  createActivityTemplate: (template: Omit<ActivityTemplate, 'id' | 'createdAt' | 'updatedAt'>) => Promise<ActivityTemplate>;
   updateActivityTemplate: (template: ActivityTemplate) => Promise<void>;
   deleteActivityTemplate: (id: string) => Promise<void>;
   createWorkflow: (workflow: Omit<Workflow, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Workflow>;
@@ -234,10 +234,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       dispatch({ type: 'CREATE_ACTIVITY_TEMPLATE', payload: newTemplate });
       dispatch({ type: 'SET_LOADING', payload: false });
+      return newTemplate;
       
     } catch (error) {
       console.error('Error creating activity template:', error);
-      dispatch({ type: 'SET_ERROR', payload: `Failed to create activity template: ${error.message}` });
+      dispatch({ type: 'SET_ERROR', payload: `Failed to create activity template: ${(error as any).message}` });
       dispatch({ type: 'SET_LOADING', payload: false });
       throw error; // Re-throw so the UI can handle it
     }
@@ -269,7 +270,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       
     } catch (error) {
       console.error('Error updating activity template:', error);
-      dispatch({ type: 'SET_ERROR', payload: `Failed to update activity template: ${error.message}` });
+      dispatch({ type: 'SET_ERROR', payload: `Failed to update activity template: ${(error as any).message}` });
       dispatch({ type: 'SET_LOADING', payload: false });
       throw error;
     }
@@ -292,7 +293,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       
     } catch (error) {
       console.error('Error deleting activity template:', error);
-      dispatch({ type: 'SET_ERROR', payload: `Failed to delete activity template: ${error.message}` });
+      dispatch({ type: 'SET_ERROR', payload: `Failed to delete activity template: ${(error as any).message}` });
       dispatch({ type: 'SET_LOADING', payload: false });
       throw error;
     }
@@ -337,7 +338,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       
     } catch (error) {
       console.error('Error creating workflow:', error);
-      dispatch({ type: 'SET_ERROR', payload: `Failed to create workflow: ${error.message}` });
+      dispatch({ type: 'SET_ERROR', payload: `Failed to create workflow: ${(error as any).message}` });
       dispatch({ type: 'SET_LOADING', payload: false });
       throw error;
     }
@@ -368,7 +369,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       
     } catch (error) {
       console.error('Error updating workflow:', error);
-      dispatch({ type: 'SET_ERROR', payload: `Failed to update workflow: ${error.message}` });
+      dispatch({ type: 'SET_ERROR', payload: `Failed to update workflow: ${(error as any).message}` });
       dispatch({ type: 'SET_LOADING', payload: false });
       throw error;
     }
@@ -391,7 +392,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       
     } catch (error) {
       console.error('Error deleting workflow:', error);
-      dispatch({ type: 'SET_ERROR', payload: `Failed to delete workflow: ${error.message}` });
+      dispatch({ type: 'SET_ERROR', payload: `Failed to delete workflow: ${(error as any).message}` });
       dispatch({ type: 'SET_LOADING', payload: false });
       throw error;
     }

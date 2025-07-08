@@ -20,13 +20,18 @@ export interface UIElement {
   icon?: string;
   iconPosition?: 'left' | 'right';
   addsElements?: boolean;
+  addNewElements?: boolean;
   elementReference?: string; // For referencing elements like #{Questionnaire}
   // Number input specific
   min?: number | string; // string for date type (ISO)
   max?: number | string; // string for date type (ISO)
   step?: number; // for date: days
   halfSize?: boolean;
+  disabled?: boolean;
   tab?: 'Configuration' | 'Advanced' | 'User Interface'; // Optional tab grouping
+  hasTitle?: boolean;
+  title?: string;
+  addedElements?: UIElement[];
 }
 
 export interface ActivityTemplate {

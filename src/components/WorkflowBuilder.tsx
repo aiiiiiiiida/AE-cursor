@@ -37,6 +37,12 @@ const ICON_COLORS = [
   { name: 'Teal', value: 'teal', bg: '#D8F4F2', iconColor: '#3C6D68' }
 ];
 
+// Add helper to normalize icon names
+function normalizeIconName(name: string): string {
+  if (!name) return '';
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
 export function WorkflowBuilder() {
   const { workflowId } = useParams();
   const navigate = useNavigate();
@@ -369,7 +375,8 @@ export function WorkflowBuilder() {
   };
 
   const getIconComponent = (iconName: string) => {
-    const icon = AVAILABLE_ICONS.find(i => i.name === iconName);
+    const normalized = normalizeIconName(iconName);
+    const icon = AVAILABLE_ICONS.find(i => i.name === normalized);
     return icon ? icon.component : Settings;
   };
 
@@ -450,6 +457,9 @@ export function WorkflowBuilder() {
         } else if (element.type === 'checkbox') {
           return value ? 'checked' : 'unchecked';
         } else if (element.type === 'file-upload') {
+          if (value && typeof value === 'object' && value instanceof File) {
+            return value.name;
+          }
           return value || 'No file selected';
         } else {
           return String(value || '');
@@ -1124,7 +1134,7 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
               type="text"
               value={node.userAssignedName || template.name}
               onChange={(e) => onUpdate({ userAssignedName: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter activity name"
             />
           </div>
@@ -1137,7 +1147,7 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
             <textarea
               value={node.sidePanelDescription || template.sidePanelDescription || ''}
               onChange={(e) => onUpdate({ sidePanelDescription: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               rows={2}
               placeholder="Description shown in the side panel"
             />
@@ -1169,7 +1179,7 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
             </div>
             
             {currentElements.length === 0 ? (
-              <div className="text-center py-6 border-2 border-dashed border-slate-300 rounded-lg">
+              <div className="text-center py-6 border-2 border-dashed border-[#8C95A8] rounded-lg">
                 <Settings className="w-6 h-6 text-slate-400 mx-auto mb-2" />
                 <p className="text-sm text-slate-600">No elements configured</p>
                 <p className="text-xs text-slate-500">Click "Add" to create your first element</p>
@@ -1236,7 +1246,7 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
                               setEditingBranchName('');
                             }
                           }}
-                          className="px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           style={{ minWidth: 80 }}
                         />
                       ) : (
@@ -1274,7 +1284,7 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
                         <select
                           value={condition.field || ''}
                           onChange={(e) => updateConditionLine(branchIndex, conditionIndex, 'field', e.target.value)}
-                          className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="flex-1 px-3 py-2 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
                           <option value="">Select field...</option>
                           <option value="Location">Location</option>
@@ -1284,7 +1294,7 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
                         <select
                           value={condition.operator || 'is'}
                           onChange={(e) => updateConditionLine(branchIndex, conditionIndex, 'operator', e.target.value)}
-                          className="px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="px-3 py-2 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
                           <option value="is">is</option>
                           <option value="is not">is not</option>
@@ -1293,7 +1303,7 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
                         <select
                           value={condition.value || ''}
                           onChange={(e) => updateConditionLine(branchIndex, conditionIndex, 'value', e.target.value)}
-                          className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="flex-1 px-3 py-2 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
                           <option value="">Select value...</option>
                           <option value="Bucharest">Bucharest</option>
@@ -1463,7 +1473,7 @@ function MapDescriptionInput({ value, onChange, uiElements }: MapDescriptionInpu
         value={value}
         onChange={handleTextChange}
         onKeyDown={handleKeyDown}
-        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        className="w-full px-3 py-2 border border-slate-300 rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         rows={2}
         placeholder="Description shown on the workflow map. Use # to reference UI element values."
       />
@@ -1581,7 +1591,7 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove }: WorkflowUIElem
         <select
           value={element.type}
           onChange={(e) => onUpdate(element.id, { type: e.target.value as UIElement['type'] })}
-          className="px-3 py-1 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="px-3 py-1 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
           <option value="text">Text Input</option>
           <option value="textarea">Textarea</option>
@@ -1593,6 +1603,7 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove }: WorkflowUIElem
           <option value="file-upload">File Upload</option>
           <option value="section-divider">Section Divider</option>
           <option value="text-block">Text Block</option>
+          <option value="date">Date Picker</option>
         </select>
         <button
           onClick={() => onRemove(element.id)}
@@ -1610,18 +1621,32 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove }: WorkflowUIElem
             type="text"
             value={element.label}
             onChange={(e) => onUpdate(element.id, { label: e.target.value })}
-            className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-2 py-1 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">Placeholder</label>
-          <input
-            type="text"
-            value={element.placeholder || ''}
-            onChange={(e) => onUpdate(element.id, { placeholder: e.target.value })}
-            className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </div>
+        {element.type !== 'section-divider' && element.type !== 'text-block' && element.type !== 'date' && (
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Placeholder</label>
+            <input
+              type="text"
+              value={element.placeholder || ''}
+              onChange={(e) => onUpdate(element.id, { placeholder: e.target.value })}
+              className="w-full px-2 py-1 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+        )}
+        {element.type === 'date' && (
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Placeholder</label>
+            <input
+              type="text"
+              value={element.placeholder || ''}
+              onChange={(e) => onUpdate(element.id, { placeholder: e.target.value })}
+              className="w-full px-2 py-1 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="e.g. Select a date"
+            />
+          </div>
+        )}
       </div>
 
       {(element.type === 'dropdown' || element.type === 'radio') && (
@@ -1634,13 +1659,28 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove }: WorkflowUIElem
               const options = e.target.value.split(',').map(opt => opt.trim()).filter(opt => opt);
               onUpdate(element.id, { options });
             }}
-            className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-2 py-1 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             placeholder="Option 1, Option 2, Option 3"
           />
+          {/* Default option selector */}
+          <div className="mt-2">
+            <label className="block text-xs font-medium text-slate-600 mb-1">Default Selected Option</label>
+            <select
+              value={typeof element.defaultValue === 'string' ? element.defaultValue : ''}
+              onChange={e => onUpdate(element.id, { defaultValue: e.target.value || undefined })}
+              disabled={!element.options || element.options.length === 0}
+              className="w-full px-2 py-1 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">None</option>
+              {element.options && element.options.map((option, idx) => (
+                <option key={idx} value={option}>{option}</option>
+              ))}
+            </select>
+          </div>
         </div>
       )}
 
-      <div className="flex items-center mb-3">
+      {/* <div className="flex items-center mb-3">
         <input
           type="checkbox"
           id={`required-${element.id}`}
@@ -1651,7 +1691,52 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove }: WorkflowUIElem
         <label htmlFor={`required-${element.id}`} className="text-xs text-slate-600">
           Required field
         </label>
-      </div>
+      </div> */}
+
+      {element.type === 'date' && (
+        <div className="mb-3 grid grid-cols-3 gap-2">
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Default Value</label>
+            <input
+              type="date"
+              value={typeof element.defaultValue === 'string' ? element.defaultValue : ''}
+              onChange={e => onUpdate(element.id, { defaultValue: e.target.value })}
+              className="w-full px-2 py-1 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="YYYY-MM-DD"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Min</label>
+            <input
+              type="date"
+              value={typeof element.min === 'string' ? element.min : ''}
+              onChange={e => onUpdate(element.id, { min: e.target.value })}
+              className="w-full px-2 py-1 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="YYYY-MM-DD"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Max</label>
+            <input
+              type="date"
+              value={typeof element.max === 'string' ? element.max : ''}
+              onChange={e => onUpdate(element.id, { max: e.target.value })}
+              className="w-full px-2 py-1 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="YYYY-MM-DD"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Step (days)</label>
+            <input
+              type="number"
+              value={element.step ?? ''}
+              onChange={e => onUpdate(element.id, { step: e.target.value === '' ? undefined : Number(e.target.value) })}
+              className="w-full px-2 py-1 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Step"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Conditional follow-up elements configuration */}
       {canHaveConditionalFollowUps && (
@@ -1671,7 +1756,7 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove }: WorkflowUIElem
                 className="mr-2"
               />
               <label htmlFor={`conditional-followup-${element.id}`} className="text-xs text-slate-600">
-                Enable conditional follow-ups
+                Has follow-up elements
               </label>
             </div>
             {element.hasConditionalFollowUps && (
@@ -1700,7 +1785,7 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove }: WorkflowUIElem
                           onChange={(e) => updateConditionalFollowUp(followUpIndex, {
                             conditionValue: e.target.value === 'true'
                           })}
-                          className="px-2 py-1 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="px-2 py-1 border border-slate-300 rounded-[10px] text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
                           <option value="true">ON</option>
                           <option value="false">OFF</option>
@@ -1711,7 +1796,7 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove }: WorkflowUIElem
                           onChange={(e) => updateConditionalFollowUp(followUpIndex, {
                             conditionValue: e.target.value === 'true'
                           })}
-                          className="px-2 py-1 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="px-2 py-1 border border-slate-300 rounded-[10px] text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
                           <option value="true">Checked</option>
                           <option value="false">Unchecked</option>
@@ -1722,7 +1807,7 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove }: WorkflowUIElem
                           onChange={(e) => updateConditionalFollowUp(followUpIndex, {
                             conditionValue: e.target.value
                           })}
-                          className="px-2 py-1 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="px-2 py-1 border border-slate-300 rounded-[10px] text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
                           <option value="">Select option...</option>
                           {element.options?.map((option) => (
@@ -1835,7 +1920,7 @@ function ActivityDropdown({ position, activities, onSelect, onClose, searchTerm,
             placeholder="Search"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            className="flex-1 px-2 py-1 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="flex-1 px-2 py-1 text-sm border border-slate-200 rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             style={{ minWidth: 0 }}
             autoFocus
           />

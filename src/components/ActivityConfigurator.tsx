@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Trash2, Edit, Settings, Eye, Save, X, Mail, Globe, Database, FileText, Calendar, Users, Zap, Clock, CheckCircle, AlertCircle, ArrowLeft, Play, Upload, Minus, Type, ToggleLeft, Split, Hourglass, ExternalLink,
+import { Plus, Trash2, Edit, Pencil, Settings, Eye, Save, X, Mail, Globe, Database, FileText, Calendar, Users, Zap, Clock, CheckCircle, AlertCircle, ArrowLeft, Play, Upload, Minus, Type, ToggleLeft, Split, Hourglass, ExternalLink,
   Search,
   User,
   MessageCircle,
@@ -56,7 +56,6 @@ function normalizeIconName(name: string): string {
 export function ActivityConfigurator() {
   const navigate = useNavigate();
   const { state, createActivityTemplate, updateActivityTemplate, deleteActivityTemplate } = useApp();
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<ActivityTemplate | null>(null);
   const [previewMode, setPreviewMode] = useState(false);
   const [triggerCreated, setTriggerCreated] = useState(false);
@@ -109,7 +108,6 @@ export function ActivityConfigurator() {
   const handleCreateTemplate = async (templateData: Omit<ActivityTemplate, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
       await createActivityTemplate(templateData);
-      setShowCreateModal(false);
     } catch (error) {
       // Error is already handled in the context and displayed in the UI
       console.error('Failed to create template:', error);
@@ -118,8 +116,15 @@ export function ActivityConfigurator() {
 
   const handleUpdateTemplate = async (template: ActivityTemplate) => {
     try {
-      await updateActivityTemplate(template);
-      setEditingTemplate(null);
+      if (!template.id) {
+        // New template: create it
+        const created = await createActivityTemplate(template);
+        setEditingTemplate(created);
+      } else {
+        // Existing template: update it
+        await updateActivityTemplate(template);
+        setEditingTemplate(null);
+      }
     } catch (error) {
       console.error('Failed to update template:', error);
     }
@@ -179,7 +184,15 @@ export function ActivityConfigurator() {
           </div>
         </div>
         <button
-          onClick={() => setShowCreateModal(true)}
+          onClick={() => setEditingTemplate({
+            name: '',
+            category: 'Workflow',
+            sidePanelDescription: '',
+            description: '',
+            icon: 'Settings',
+            iconColor: 'purple',
+            sidePanelElements: [],
+          })}
           disabled={state.loading}
           className="bg-[#4D3EE0] text-sm text-white px-4 py-2 rounded-xl font-normal hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
@@ -273,14 +286,6 @@ export function ActivityConfigurator() {
         </div>
       </div>
 
-      {showCreateModal && (
-        <CreateTemplateModal
-          onClose={() => setShowCreateModal(false)}
-          onSave={handleCreateTemplate}
-          loading={state.loading}
-        />
-      )}
-
       {/* Delete Confirmation Modal */}
       {templateToDelete && (
         <div
@@ -350,10 +355,22 @@ interface TemplateEditorProps {
 function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePreview, loading }: TemplateEditorProps) {
   const [editedTemplate, setEditedTemplate] = useState<ActivityTemplate>(template);
   const [activeTab, setActiveTab] = useState<'Configuration' | 'Advanced' | 'User Interface'>('Configuration');
+  // Track all categories used in this session
+  const [categories, setCategories] = useState<string[]>(['Workflow', 'Communication']);
+  const [categoryInput, setCategoryInput] = useState<string>(template.category || 'Workflow');
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+
+  // Update categories if a new one is entered
+  useEffect(() => {
+    if (categoryInput && !categories.some(cat => cat.toLowerCase() === categoryInput.toLowerCase())) {
+      setCategories(prev => [...prev, categoryInput]);
+    }
+  }, [categoryInput]);
 
   // Update editedTemplate when template prop changes
   useEffect(() => {
     setEditedTemplate(template);
+    setCategoryInput(template.category || 'Workflow');
   }, [template]);
 
   // Determine which tabs are present
@@ -434,24 +451,33 @@ function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePrevi
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-slate-900">
-          Editing: {editedTemplate.name}
-        </h3>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={onTogglePreview}
-            disabled={loading}
-            className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
-              previewMode
-                ? 'bg-blue-100 text-blue-700'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-            }`}
-          >
-            <Eye className="w-4 h-4 inline mr-1" />
-            {previewMode ? 'Edit' : 'Preview'}
-          </button>
-        </div>
-      </div>
+  <h3 className="text-lg font-semibold text-slate-900">
+    Editing: {editedTemplate.name}
+  </h3>
+  <div className="flex items-center space-x-2">
+    <button
+      onClick={onTogglePreview}
+      disabled={loading}
+      className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
+        previewMode
+          ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+      }`}
+    >
+      {previewMode ? (
+        <>
+          <Pencil className="w-3.5 h-3.5 inline mr-1" />
+          Edit
+        </>
+      ) : (
+        <>
+          <Eye className="w-4 h-4 inline mr-1" />
+          Preview
+        </>
+      )}
+    </button>
+  </div>
+</div>
 
       {previewMode ? (
         <div className="space-y-4">
@@ -460,35 +486,164 @@ function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePrevi
         </div>
       ) : (
         <div className="space-y-4">
-          {/* Tab Bar */}
-          {showTabs && (
-  <div className="flex bg-[#F5F7FA] rounded-xl p-0.5 w-full max-w-full mb-4">
-    {allTabs.map((tab, idx) => (
-      <button
-        key={tab}
-        type="button"
-        onClick={() => setActiveTab(tab)}
-        className={
-          `flex-1 py-2 text-[12px] font-semibold focus:outline-none transition-all duration-150 ` +
-          (activeTab === tab
-            ? 'bg-white shadow text-slate-700 z-10 ' +
-              (idx === 0 ? 'rounded-l-xl' : '') +
-              (idx === allTabs.length - 1 ? ' rounded-r-xl' : '')
-            : 'bg-transparent text-slate-500 hover:text-slate-700 ' +
-              (idx === 0 ? 'rounded-l-xl' : '') +
-              (idx === allTabs.length - 1 ? ' rounded-r-xl' : ''))
-        }
-      >
-        {tab}
-      </button>
-    ))}
-  </div>
-)}
+          {/* Show meta fields only in edit mode */}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
+              <input
+                type="text"
+                value={editedTemplate.name}
+                onChange={(e) => setEditedTemplate({ ...editedTemplate, name: e.target.value })}
+                disabled={loading}
+                className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+              />
+            </div>
+            <div className="relative">
+              <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
+              <input
+                type="text"
+                value={categoryInput}
+                onChange={e => {
+                  setCategoryInput(e.target.value);
+                  setEditedTemplate({ ...editedTemplate, category: e.target.value });
+                }}
+                onFocus={() => setShowCategoryDropdown(true)}
+                onBlur={() => setTimeout(() => setShowCategoryDropdown(false), 150)}
+                disabled={loading}
+                className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+                placeholder="Enter or select a category"
+                list="activity-category-list"
+                autoComplete="off"
+              />
+              {showCategoryDropdown && categories.length > 0 && (
+                <div className="absolute z-10 bg-white border border-slate-200 rounded shadow w-full mt-1 max-h-40 overflow-y-auto">
+                  {[...new Set(categories.map(cat => cat.trim().toLowerCase()))]
+                    .map(lowerCat => categories.find(cat => cat.trim().toLowerCase() === lowerCat)!)
+                    .map(cat => (
+                      <button
+                        key={cat}
+                        type="button"
+                        className={`w-full text-left px-3 py-2 hover:bg-slate-100 text-sm ${cat === categoryInput ? 'bg-blue-50 font-semibold' : ''}`}
+                        onMouseDown={() => {
+                          setCategoryInput(cat);
+                          setEditedTemplate({ ...editedTemplate, category: cat });
+                          setShowCategoryDropdown(false);
+                        }}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Side Panel Description</label>
+              <textarea
+                value={editedTemplate.sidePanelDescription || ''}
+                onChange={(e) => setEditedTemplate({ ...editedTemplate, sidePanelDescription: e.target.value })}
+                disabled={loading}
+                className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+                rows={2}
+                placeholder="Description shown in the side panel"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Map Description</label>
+              <MapDescriptionInput
+                value={editedTemplate.description}
+                onChange={(value) => setEditedTemplate({ ...editedTemplate, description: value })}
+                uiElements={editedTemplate.sidePanelElements}
+                disabled={loading}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Icon</label>
+              <div className="flex flex-wrap gap-1">
 
+                {AVAILABLE_ICONS.map((iconOption) => {
+                  const IconComponent = iconOption.component;
+                  const isSelected = editedTemplate.icon === iconOption.name;
+                  const iconColor = getIconColor(editedTemplate.iconColor || 'purple');
+                  return (
+                    <button
+                      key={iconOption.name}
+                      type="button"
+                      onClick={() => setEditedTemplate({ ...editedTemplate, icon: normalizeIconName(iconOption.name) })}
+                      disabled={loading}
+                      className={`p-0.5 rounded-lg border transition-all duration-200 disabled:opacity-50 ${
+                        isSelected
+                          ? 'border-[#4D3EE0] bg-blue-50'
+                          : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div
+                        className="w-6 h-6 rounded flex items-center justify-center mx-auto"
+                        style={{ backgroundColor: iconColor.bg }}
+                      >
+                        <IconComponent className="w-4 h-4" style={{ color: iconColor.iconColor }} />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Icon Color</label>
+              <div className="flex space-x-1">
+                {ICON_COLORS.map((colorOption) => {
+                  const isSelected = (editedTemplate.iconColor || 'purple') === colorOption.value;
+                  const IconComponent = getIconComponent(editedTemplate.icon);
+                  return (
+                    <button
+                      key={colorOption.value}
+                      type="button"
+                      onClick={() => setEditedTemplate({ ...editedTemplate, iconColor: colorOption.value })}
+                      disabled={loading}
+                      className={`flex items-center space-x-2 px-2 py-2 rounded-lg border transition-all duration-200 disabled:opacity-50 ${
+                        isSelected
+                          ? 'border-[#4D3EE0] bg-blue-50'
+                          : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div
+                        className="w-3 h-3 rounded-full flex items-center justify-center"
+                        style={{ backgroundColor: colorOption.iconColor }}
+                      ></div>
+                      {/* <span className="text-sm font-medium text-slate-700">{colorOption.name}</span> */}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
 
+          {/* Tab Bar for switching between Configuration, Advanced, User Interface */}
+          <div className="flex bg-[#F5F7FA] rounded-xl p-0.5 w-full max-w-full mb-4">
+            {allTabs.map((tab, idx) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                className={
+                  `flex-1 py-2 text-[12px] font-semibold focus:outline-none transition-all duration-150 ` +
+                  (activeTab === tab
+                    ? 'bg-white shadow text-slate-700 z-10 ' +
+                      (idx === 0 ? 'rounded-l-xl' : '') +
+                      (idx === allTabs.length - 1 ? ' rounded-r-xl' : '')
+                    : 'bg-transparent text-slate-500 hover:text-slate-700 ' +
+                      (idx === 0 ? 'rounded-l-xl' : '') +
+                      (idx === allTabs.length - 1 ? ' rounded-r-xl' : ''))
+                }
+                style={{ minWidth: 0 }}
+                disabled={loading}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
           {/* Add UI Element Button for Active Tab */}
           <div className="flex items-center justify-between mb-3">
-            <label className="block text-sm font-medium text-slate-700">UI Elements ({activeTab})</label>
+            <label className="block text-sm font-medium text-slate-700">UI Elements</label>
             <button
               onClick={addUIElement}
               disabled={loading}
@@ -674,7 +829,7 @@ function MapDescriptionInput({ value, onChange, uiElements, disabled }: MapDescr
         onChange={handleTextChange}
         onKeyDown={handleKeyDown}
         disabled={disabled}
-        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+        className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
         rows={2}
         placeholder="Description shown on the workflow map. Use # to reference UI element values."
       />
@@ -842,7 +997,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
           value={element.type}
           onChange={(e) => onUpdate({ type: e.target.value as UIElement['type'] })}
           disabled={disabled}
-          className="px-3 py-1 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+          className="px-3 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
         >
           <option value="text">Text Input</option>
           <option value="textarea">Textarea</option>
@@ -883,27 +1038,31 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
       </div>
 
       <div className="grid grid-cols-2 gap-3 mb-3">
-        <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">
-            {element.type === 'section-divider' ? 'Section Title' : 
-             element.type === 'text-block' ? 'Text Content' : 'Label'}
-          </label>
-          <input
-            type="text"
-            value={element.type === 'section-divider' || element.type === 'text-block' ? 
-              (element.text || element.label) : element.label}
-            onChange={(e) => {
-              if (element.type === 'section-divider' || element.type === 'text-block') {
-                onUpdate({ text: e.target.value, label: e.target.value });
-              } else {
-                onUpdate({ label: e.target.value });
-              }
-            }}
-            disabled={disabled}
-            className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
-          />
-        </div>
-        {element.type !== 'section-divider' && element.type !== 'text-block' && element.type !== 'number' && element.type !== 'date' && element.type !== 'radio' && (
+        {element.type === 'text-block' ? (
+          <div className="col-span-2 mb-3">
+            <label className="block text-xs font-medium text-slate-600 mb-1">Text Content</label>
+            <textarea
+              value={element.text || element.label}
+              onChange={e => onUpdate({ text: e.target.value, label: e.target.value })}
+              disabled={disabled}
+              className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+              rows={4}
+              placeholder="Enter text content..."
+            />
+          </div>
+        ) : (
+          <div className={element.type === 'toggle' ? 'col-span-2' : ''}>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Label</label>
+            <input
+              type="text"
+              value={element.label}
+              onChange={e => onUpdate({ label: e.target.value })}
+              disabled={disabled}
+              className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+            />
+          </div>
+        )}
+        {element.type !== 'section-divider' && element.type !== 'text-block' && element.type !== 'number' && element.type !== 'date' && element.type !== 'radio' && element.type !== 'toggle' && (
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Placeholder</label>
             <input
@@ -911,7 +1070,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
               value={element.placeholder || ''}
               onChange={(e) => onUpdate({ placeholder: e.target.value })}
               disabled={disabled}
-              className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+              className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
             />
           </div>
         )}
@@ -923,14 +1082,29 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
               value={element.placeholder || ''}
               onChange={(e) => onUpdate({ placeholder: e.target.value })}
               disabled={disabled}
-              className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+              className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
               placeholder="e.g. Select a date"
             />
           </div>
         )}
       </div>
-      {/* Half-size input checkbox for text, dropdown, date, number */}
-      {['text', 'dropdown', 'date', 'number'].includes(element.type) && (
+     
+      {/* Default text for text and textarea */}
+      {['text', 'textarea'].includes(element.type) && (
+        <div className="mb-3">
+          <label className="block text-xs font-medium text-slate-600 mb-1">Default Text</label>
+          <input
+            type="text"
+            value={typeof element.defaultValue === 'string' ? element.defaultValue : ''}
+            onChange={e => onUpdate({ defaultValue: e.target.value })}
+            disabled={disabled}
+            className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+            placeholder="Optional default text"
+          />
+        </div>
+      )}
+       {/* Half-size input checkbox for text, dropdown, date, number */}
+       {['text', 'dropdown', 'date', 'number'].includes(element.type) && (
         <div className="flex items-center mb-3">
           <input
             type="checkbox"
@@ -943,20 +1117,6 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
           <label htmlFor={`half-size-${element.id}`} className="text-xs text-slate-600">
             Half-size input
           </label>
-        </div>
-      )}
-      {/* Default text for text and textarea */}
-      {['text', 'textarea'].includes(element.type) && (
-        <div className="mb-3">
-          <label className="block text-xs font-medium text-slate-600 mb-1">Default Text</label>
-          <input
-            type="text"
-            value={typeof element.defaultValue === 'string' ? element.defaultValue : ''}
-            onChange={e => onUpdate({ defaultValue: e.target.value })}
-            disabled={disabled}
-            className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
-            placeholder="Optional default text"
-          />
         </div>
       )}
 
@@ -981,7 +1141,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
                   value={option}
                   onChange={(e) => updateOption(index, e.target.value)}
                   disabled={disabled}
-                  className="flex-1 px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+                  className="flex-1 px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
                   placeholder={`Option ${index + 1}`}
                 />
                 <button
@@ -1006,7 +1166,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
               value={typeof element.defaultValue === 'string' ? element.defaultValue : ''}
               onChange={e => onUpdate({ defaultValue: e.target.value || undefined })}
               disabled={disabled || !element.options || element.options.length === 0}
-              className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+              className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
             >
               <option value="">None</option>
               {element.options && element.options.map((option, idx) => (
@@ -1054,6 +1214,34 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
       {/* Button-specific configurations */}
       {element.type === 'button' && (
         <div className="space-y-3 mb-3">
+          {/* Has title checkbox */}
+          <div className="flex items-center mb-2">
+            <input
+              type="checkbox"
+              id={`has-title-${element.id}`}
+              checked={!!element.hasTitle}
+              onChange={e => onUpdate({ hasTitle: e.target.checked })}
+              disabled={disabled}
+              className="mr-2 disabled:opacity-50"
+            />
+            <label htmlFor={`has-title-${element.id}`} className="text-xs text-slate-600">
+              Has title
+            </label>
+          </div>
+          {/* Title input */}
+          {element.hasTitle && (
+            <div className="mb-2">
+              <label className="block text-xs font-medium text-slate-600 mb-1">Title</label>
+              <input
+                type="text"
+                value={element.title || ''}
+                onChange={e => onUpdate({ title: e.target.value })}
+                disabled={disabled}
+                className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+                placeholder="Button title"
+              />
+            </div>
+          )}
           {/* Has Icon checkbox */}
           <div className="flex items-center">
             <input
@@ -1071,27 +1259,25 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
 
           {/* Icon selection and position */}
           {element.hasIcon && (
-            <div className="space-y-3 ml-4 p-3 bg-white rounded border">
+            <div className="space-y-3 ml-4  rounded-lg">
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-2">Icon</label>
-                <div className="grid grid-cols-6 gap-2">
+                <div className="flex flex-wrap gap-1">
                   {AVAILABLE_ICONS.map((iconOption) => {
                     const IconComponent = iconOption.component;
                     const isSelected = element.icon === iconOption.name;
-                    
                     return (
                       <button
                         key={iconOption.name}
                         type="button"
                         onClick={() => onUpdate({ icon: normalizeIconName(iconOption.name) })}
                         disabled={disabled}
-                        className={`p-2 rounded border transition-all duration-200 disabled:opacity-50 ${
+                        className={`p-1 rounded border bg-white transition-all duration-200 disabled:opacity-50 ${
                           isSelected
-                            ? 'border-blue-500 bg-blue-50'
+                            ? 'border-[#4D3EE0] bg-blue-50'
                             : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                         }`}
                       >
-                        <IconComponent className="w-4 h-4 mx-auto" />
+                        <IconComponent className="w-4 h-4 mx-auto" style={{ color: '#4D3EE0' }} />
                       </button>
                     );
                   })}
@@ -1105,10 +1291,10 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
                     type="button"
                     onClick={() => onUpdate({ iconPosition: 'left' })}
                     disabled={disabled}
-                    className={`px-3 py-1 rounded text-xs transition-colors disabled:opacity-50 ${
+                    className={`px-3 py-1 rounded-md text-xs transition-colors disabled:opacity-50 ${
                       (element.iconPosition || 'left') === 'left'
-                        ? 'bg-blue-100 text-blue-700 border border-blue-300'
-                        : 'bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200'
+                        ? 'bg-blue-50 text-slate-800  border border-[#4D3EE0]'
+                        : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-200'
                     }`}
                   >
                     Left
@@ -1117,10 +1303,10 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
                     type="button"
                     onClick={() => onUpdate({ iconPosition: 'right' })}
                     disabled={disabled}
-                    className={`px-3 py-1 rounded text-xs transition-colors disabled:opacity-50 ${
+                    className={`px-3 py-1 rounded-md text-xs transition-colors disabled:opacity-50 ${
                       element.iconPosition === 'right'
-                        ? 'bg-blue-100 text-blue-700 border border-blue-300'
-                        : 'bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200'
+                        ? 'bg-blue-50 text-slate-800 border border-[#4D3EE0]'
+                        : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-200'
                     }`}
                   >
                     Right
@@ -1145,8 +1331,87 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
             </label>
           </div>
 
-          {/* Element Reference input */}
+          {/* Add New Elements checkbox (only if addsElements is checked) */}
           {element.addsElements && (
+            <div className="flex items-center mt-2">
+              <input
+                type="checkbox"
+                id={`add-new-elements-${element.id}`}
+                checked={!!element.addNewElements}
+                onChange={e => onUpdate({ addNewElements: e.target.checked })}
+                disabled={disabled}
+                className="mr-2 disabled:opacity-50"
+              />
+              <label htmlFor={`add-new-elements-${element.id}`} className="text-xs text-slate-600">
+                Add new elements
+              </label>
+            </div>
+          )}
+
+          {/* Configure added elements or reference input */}
+          {element.addsElements && element.addNewElements && (
+            <div className="ml-4 p-3 bg-white rounded border">
+              <label className="block text-xs font-medium text-slate-600 mb-2">Elements to Add (appear above button)</label>
+              <div className="space-y-2">
+                {(element.addedElements || []).map((addedEl, idx) => (
+                  <UIElementEditor
+                    key={addedEl.id}
+                    element={addedEl}
+                    onUpdate={updates => {
+                      const newAdded = [...(element.addedElements || [])];
+                      newAdded[idx] = { ...addedEl, ...updates };
+                      onUpdate({ addedElements: newAdded });
+                    }}
+                    onRemove={() => {
+                      const newAdded = [...(element.addedElements || [])];
+                      newAdded.splice(idx, 1);
+                      onUpdate({ addedElements: newAdded });
+                    }}
+                    onMoveUp={() => {
+                      if (idx > 0) {
+                        const newAdded = [...(element.addedElements || [])];
+                        [newAdded[idx - 1], newAdded[idx]] = [newAdded[idx], newAdded[idx - 1]];
+                        onUpdate({ addedElements: newAdded });
+                      }
+                    }}
+                    onMoveDown={() => {
+                      if (idx < (element.addedElements?.length || 0) - 1) {
+                        const newAdded = [...(element.addedElements || [])];
+                        [newAdded[idx + 1], newAdded[idx]] = [newAdded[idx], newAdded[idx + 1]];
+                        onUpdate({ addedElements: newAdded });
+                      }
+                    }}
+                    canMoveUp={idx > 0}
+                    canMoveDown={idx < (element.addedElements?.length || 0) - 1}
+                    disabled={disabled}
+                    allElements={allElements}
+                  />
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newAdded = [
+                      ...((element.addedElements as UIElement[]) || []),
+                      {
+                        id: Date.now().toString(),
+                        type: 'dropdown',
+                        label: 'New Dropdown',
+                        required: false,
+                        options: ['Option 1', 'Option 2'],
+                        tab: element.tab
+                      } as UIElement
+                    ];
+                    onUpdate({ addedElements: newAdded });
+                  }}
+                  className="text-xs text-blue-700 hover:underline mt-2"
+                  disabled={disabled}
+                >
+                  + Add Element
+                </button>
+              </div>
+            </div>
+          )}
+          {element.addsElements && !element.addNewElements && (
             <div className="ml-4 p-3 bg-white rounded border">
               <ElementReferenceInput
                 value={element.elementReference || ''}
@@ -1209,7 +1474,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
                             conditionValue: e.target.value === 'true'
                           })}
                           disabled={disabled}
-                          className="px-2 py-1 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+                          className="px-2 py-1 border border-[#8C95A8] rounded-[10px] text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
                         >
                           <option value="true">ON</option>
                           <option value="false">OFF</option>
@@ -1221,7 +1486,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
                             conditionValue: e.target.value === 'true'
                           })}
                           disabled={disabled}
-                          className="px-2 py-1 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+                          className="px-2 py-1 border border-[#8C95A8] rounded-[10px] text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
                         >
                           <option value="true">Checked</option>
                           <option value="false">Unchecked</option>
@@ -1233,7 +1498,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
                             conditionValue: e.target.value
                           })}
                           disabled={disabled}
-                          className="px-2 py-1 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+                          className="px-2 py-1 border border-[#8C95A8] rounded-[10px] text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
                         >
                           <option value="">Select option...</option>
                           {element.options?.map((option) => (
@@ -1322,7 +1587,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
               type="number"
               value={(typeof element.defaultValue === 'number' || typeof element.defaultValue === 'string') ? element.defaultValue : ''}
               onChange={e => onUpdate({ defaultValue: e.target.value === '' ? undefined : Number(e.target.value) })}
-              className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
               placeholder="Default value"
             />
@@ -1334,7 +1599,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
                 type="number"
                 value={element.min ?? ''}
                 onChange={e => onUpdate({ min: e.target.value === '' ? undefined : Number(e.target.value) })}
-                className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Min"
               />
             </div>
@@ -1344,7 +1609,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
                 type="number"
                 value={element.max ?? ''}
                 onChange={e => onUpdate({ max: e.target.value === '' ? undefined : Number(e.target.value) })}
-                className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Max"
               />
             </div>
@@ -1354,7 +1619,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
                 type="number"
                 value={element.step ?? ''}
                 onChange={e => onUpdate({ step: e.target.value === '' ? undefined : Number(e.target.value) })}
-                className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Step"
               />
             </div>
@@ -1370,7 +1635,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
               type="date"
               value={typeof element.defaultValue === 'string' ? element.defaultValue : ''}
               onChange={e => onUpdate({ defaultValue: e.target.value })}
-              className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="YYYY-MM-DD"
             />
           </div>
@@ -1380,7 +1645,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
               type="date"
               value={typeof element.min === 'string' ? element.min : ''}
               onChange={e => onUpdate({ min: e.target.value })}
-              className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="YYYY-MM-DD"
             />
           </div>
@@ -1390,7 +1655,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
               type="date"
               value={typeof element.max === 'string' ? element.max : ''}
               onChange={e => onUpdate({ max: e.target.value })}
-              className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="YYYY-MM-DD"
             />
           </div>
@@ -1400,10 +1665,39 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
               type="number"
               value={element.step ?? ''}
               onChange={e => onUpdate({ step: e.target.value === '' ? undefined : Number(e.target.value) })}
-              className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Step"
             />
           </div>
+        </div>
+      )}
+      {element.type === 'text' && (
+        <div className="flex items-center mb-3">
+          <input
+            type="checkbox"
+            id={`disabled-${element.id}`}
+            checked={!!element.disabled}
+            onChange={e => onUpdate({ disabled: e.target.checked })}
+            disabled={disabled}
+            className="mr-2 disabled:opacity-50"
+          />
+          <label htmlFor={`disabled-${element.id}`} className="text-xs text-slate-600">
+            Is disabled
+          </label>
+        </div>
+      )}
+      {element.type === 'section-divider' && (
+        <div className="mb-3">
+          <label className="block text-xs font-medium text-slate-600 mb-1">Section Title</label>
+          <input
+            type="text"
+            value={element.text || element.label}
+            onChange={e => onUpdate({ text: e.target.value, label: e.target.value })}
+            disabled={disabled}
+            className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+            placeholder="Section title (optional)"
+          />
+          <div className="text-xs text-slate-500 mt-1">Leave empty if you just want a divider line</div>
         </div>
       )}
     </div>
@@ -1547,7 +1841,7 @@ function ElementReferenceInput({ value, onChange, allElements, disabled }: Eleme
         onChange={handleTextChange}
         onKeyDown={handleKeyDown}
         disabled={disabled}
-        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+        className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
         placeholder="Type # to reference elements (e.g., #{Questionnaire})"
       />
       
@@ -1581,187 +1875,6 @@ function ElementReferenceInput({ value, onChange, allElements, disabled }: Eleme
       
       <div className="mt-1 text-xs text-slate-500">
         Type <code className="bg-slate-100 px-1 rounded">#</code> to reference existing elements or create new ones.
-      </div>
-    </div>
-  );
-}
-
-interface CreateTemplateModalProps {
-  onClose: () => void;
-  onSave: (template: Omit<ActivityTemplate, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  loading: boolean;
-}
-
-function CreateTemplateModal({ onClose, onSave, loading }: CreateTemplateModalProps) {
-  const [name, setName] = useState('');
-  const [category, setCategory] = useState('Workflow');
-  const [sidePanelDescription, setSidePanelDescription] = useState('');
-  const [mapDescription, setMapDescription] = useState('');
-  const [icon, setIcon] = useState('Settings');
-  const [iconColor, setIconColor] = useState('purple');
-
-  const handleSave = () => {
-    if (name.trim()) {
-      onSave({
-        name,
-        category,
-        sidePanelDescription,
-        description: mapDescription,
-        icon,
-        iconColor,
-        sidePanelElements: []
-      });
-    }
-  };
-
-  const getIconComponent = (iconName: string) => {
-    const normalized = normalizeIconName(iconName);
-    const iconDef = AVAILABLE_ICONS.find(i => i.name === normalized);
-    return iconDef ? iconDef.component : Settings;
-  };
-
-  const getIconColor = (color: string) => {
-    const colorConfig = ICON_COLORS.find(c => c.value === color);
-    return colorConfig || ICON_COLORS[0];
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-        <h2 className="text-xl font-bold text-slate-900 mb-4">Create Activity Template</h2>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              disabled={loading}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
-              placeholder="Enter template name"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Category</label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              disabled={loading}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
-            >
-              <option value="Workflow">Workflow</option>
-              <option value="Communication">Communication</option>
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Side Panel Description</label>
-            <textarea
-              value={sidePanelDescription}
-              onChange={(e) => setSidePanelDescription(e.target.value)}
-              disabled={loading}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
-              placeholder="Description shown in the side panel"
-              rows={2}
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Map Description</label>
-            <textarea
-              value={mapDescription}
-              onChange={(e) => setMapDescription(e.target.value)}
-              disabled={loading}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
-              placeholder="Description shown on the workflow map"
-              rows={2}
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Icon</label>
-            <div className="grid grid-cols-5 gap-2">
-              {AVAILABLE_ICONS.map((iconOption) => {
-                const IconComponent = iconOption.component;
-                const isSelected = icon === iconOption.name;
-                const selectedIconColor = getIconColor(iconColor);
-                
-                return (
-                  <button
-                    key={iconOption.name}
-                    type="button"
-                    onClick={() => setIcon(normalizeIconName(iconOption.name))}
-                    disabled={loading}
-                    className={`p-3 rounded-lg border-2 transition-all duration-200 disabled:opacity-50 ${
-                      isSelected
-                        ? 'border-[#4D3EE0] bg-blue-50'
-                        : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div 
-                      className="w-6 h-6 rounded flex items-center justify-center mx-auto"
-                      style={{ backgroundColor: selectedIconColor.bg }}
-                    >
-                      <IconComponent className="w-4 h-4" style={{ color: selectedIconColor.iconColor }} />
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Icon Color</label>
-            <div className="flex space-x-3">
-              {ICON_COLORS.map((colorOption) => {
-                const isSelected = iconColor === colorOption.value;
-                const IconComponent = getIconComponent(icon);
-                
-                return (
-                  <button
-                    key={colorOption.value}
-                    type="button"
-                    onClick={() => setIconColor(colorOption.value)}
-                    disabled={loading}
-                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg border-2 transition-all duration-200 disabled:opacity-50 ${
-                      isSelected
-                        ? 'border-[#4D3EE0] bg-blue-50'
-                        : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div 
-                      className="w-3 h-3 rounded-full flex items-center justify-center"
-                      style={{ backgroundColor: colorOption.bg }}
-                    >
-                      {/* <IconComponent className="w-4 h-4" style={{ color: colorOption.iconColor }} /> */}
-                    </div>
-                    <span className="text-sm font-medium text-slate-700">{colorOption.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-        <div className="flex justify-end space-x-3 mt-6">
-          <button
-            onClick={onClose}
-            disabled={loading}
-            className="px-4 py-2 text-slate-600 hover:text-slate-800 transition-colors disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={!name.trim() || loading}
-            className="px-4 py-2 bg-[#4D3EE0] text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
-          >
-            {loading ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-            ) : null}
-            <span>Create</span>
-          </button>
-        </div>
       </div>
     </div>
   );
