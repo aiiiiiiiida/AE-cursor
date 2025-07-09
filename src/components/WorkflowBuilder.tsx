@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect, Dispatch, SetStateAction, useRef as useReactRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Play, Save, Eye, Settings, Trash2, Search, X, Edit2, Check, ZoomIn, ZoomOut, Maximize2, Minus, Scan, Mail, Globe, Database, FileText, Calendar, Users, Zap, Clock, CheckCircle, AlertCircle, Split, Image, Bot, Hourglass, User, MessageCircle, Tag, ListChecks, Video, ExternalLink, GitBranch } from 'lucide-react';
+import { ArrowLeft, Plus, Play, Save, Eye, Settings, Trash2, Search, X, Edit2, Check, ZoomIn, ZoomOut, Maximize2, Minus, Scan, Mail, Globe, Database, FileText, Calendar, Users, Zap, Clock, CheckCircle, AlertCircle, Split, Image, Bot, Hourglass, User, MessageCircle, Tag, ListChecks, Video, ExternalLink, GitBranch, Star, Sparkle, UserRoundPlus } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { WorkflowNode, ActivityTemplate, UIElement, ConditionalFollowUp } from '../types';
 import { DynamicForm } from './DynamicForm';
@@ -17,18 +17,20 @@ const AVAILABLE_ICONS = [
   { name: 'Clock', component: Clock },
   { name: 'CheckCircle', component: CheckCircle },
   { name: 'AlertCircle', component: AlertCircle },
-    { name: 'Image', component: Image },
-   { name: 'Split', component: Split },
+  { name: 'Image', component: Image },
+  { name: 'Split', component: Split },
   { name: 'Hourglass', component: Hourglass },
   { name: 'Search', component: Search },
   { name: 'User', component: User },
   { name: 'Message', component: MessageCircle },
- 
   { name: 'Tag', component: Tag },
   { name: 'Checklist', component: ListChecks },
   { name: 'Video', component: Video },
   { name: 'ExternalLink', component: ExternalLink },
-  { name: 'Robot', component: Bot}
+  { name: 'Robot', component: Bot },
+  { name: 'Star', component: Star },
+  { name: 'Sparkle', component: Sparkle },
+  { name: 'UserRoundPlus', component: UserRoundPlus }
 ];
 
 const ICON_COLORS = [
@@ -627,18 +629,19 @@ export function WorkflowBuilder() {
                           <p className="text-[10px] text-[#637085] leading-relaxed mt-2">{displayDescription}</p>
                         )}
                       </div>
-                      <div className="w-0.5 h-4 bg-slate-300" />
-                      {/* SVG for horizontal + rounded lines */}
+                      {/* Vertical line directly after the card, with no margin below */}
+                      <div className="w-0.5 h-8 bg-slate-300 m-0 p-0" style={{ margin: 0, padding: 0 }} />
+                      {/* SVG for horizontal + rounded lines, horizontal line at the very top */}
                       {branchCount > 1 && (
-                        <svg width={svgWidth} height={svgHeight} className="block" style={{ marginTop: -1 }}>
-                          {/* Horizontal line */}
-                          <line x1={branchXs[0]} y1={svgHeight/2} x2={branchXs[branchCount-1]} y2={svgHeight/2} stroke="#CBD5E1" strokeWidth="2" />
+                        <svg width={svgWidth} height={svgHeight} className="block" style={{ marginTop: 0 }}>
+                          {/* Horizontal line at the very top */}
+                          <line x1={branchXs[0]} y1={0} x2={branchXs[branchCount-1]} y2={0} stroke="#CBD5E1" strokeWidth="2" />
                           {/* Rounded corners and verticals */}
-                          {branchXs.map((x: number, idx: number) => (
+                          {branchXs.map((x: number, idx: any) => (
                             <React.Fragment key={idx}>
-                              {/* Rounded corner */}
+                              {/* Rounded corner starting at the top */}
                               <path
-                                d={`M${x},${svgHeight/2} Q${x},${svgHeight/2+8} ${x},${svgHeight}`}
+                                d={`M${x},0 Q${x},8 ${x},${svgHeight}`}
                                 stroke="#CBD5E1"
                                 strokeWidth="2"
                                 fill="none"
@@ -1912,7 +1915,7 @@ function ActivityDropdown({ position, activities, onSelect, onClose, searchTerm,
       className="z-[9999] fixed"
       style={{ left: position.left, top: position.top, width: 264, maxWidth: '90vw' }}
     >
-      <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-3" style={{ minWidth: 260 }}>
+      <div className="bg-white rounded-2xl shadow-xl border border-slate-200 pt-2" style={{ minWidth: 260 }}>
         <div className="flex items-center mb-2 px-1">
           
           <input
@@ -1920,7 +1923,7 @@ function ActivityDropdown({ position, activities, onSelect, onClose, searchTerm,
             placeholder="Search"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            className="flex-1 px-2 py-1 text-sm border border-slate-200 rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="flex-1 px-2 py-1 ml-1 mr-1 text-sm border border-slate-200 rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             style={{ minWidth: 0 }}
             autoFocus
           />
@@ -1931,7 +1934,7 @@ function ActivityDropdown({ position, activities, onSelect, onClose, searchTerm,
           )}
           {Object.entries(filtered).map(([category, acts]) => (
             <div key={category} className="mb-2">
-              <div className="text-[10px] font-bold text-[#8C95A8] uppercase tracking-wider px-2 py-1 bg-[#F5F7FA] rounded mb-1">{category}</div>
+              <div className="text-[10px] font-semibold text-[#8C95A8] uppercase tracking-wider px-2 py-1 bg-[#F5F7FA] rounded mb-1">{category}</div>
               <div className="flex flex-col gap-1">
                 {(acts as ActivityTemplate[]).map(activity => {
                   const IconComponent = AVAILABLE_ICONS.find(i => i.name === activity.icon)?.component || Settings;
@@ -1940,7 +1943,7 @@ function ActivityDropdown({ position, activities, onSelect, onClose, searchTerm,
                     <button
                       key={activity.id}
                       onClick={() => { onSelect(activity); onClose(); }}
-                      className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-[#F5F7FA] transition-all text-left"
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#F5F7FA] transition-all text-left"
                       style={{ minHeight: 36 }}
                     >
                       <div className="w-6 h-6 rounded-[8px] flex items-center justify-center" style={{ backgroundColor: iconColor.bg }}>
