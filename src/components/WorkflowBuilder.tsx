@@ -608,7 +608,7 @@ export function WorkflowBuilder() {
                   const branchCount = branches.length;
                   const columnWidth = 264; // width of activity card
                   const gap = 40;
-                  const svgHeight = 32;
+                  const svgHeight = 12;
                   const svgWidth = branchCount > 1 ? (branchCount - 1) * (columnWidth + gap) : 0;
                   const startX = svgWidth / 2;
                   const branchXs = branches.map((_: any, idx: any) => idx * (columnWidth + gap));
@@ -658,7 +658,7 @@ export function WorkflowBuilder() {
                             <React.Fragment key={idx}>
                               {/* Rounded corner starting at the top */}
                               <path
-                                d={`M${x},0 Q${x},8 ${x},${svgHeight}`}
+                                d={`M${x},0 Q${x},6 ${x},${svgHeight}`}
                                 stroke="#CBD5E1"
                                 strokeWidth="3"
                                 fill="none"
@@ -668,7 +668,7 @@ export function WorkflowBuilder() {
                         </svg>
                       )}
                       {/* Branch columns */}
-                      <div className="flex flex-row justify-center gap-x-12 mt-8">
+                      <div className="flex flex-row justify-center gap-x-12 mt-0">
                         {branches.map((branchName: string, branchIdx: number) => {
                           const branchNodes = getNodesForBranch(branchName);
                           return (

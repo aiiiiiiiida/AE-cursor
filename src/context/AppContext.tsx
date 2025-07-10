@@ -13,7 +13,7 @@ type AppAction =
   | { type: 'SELECT_ACTIVITY_TEMPLATE'; payload: ActivityTemplate }
   | { type: 'ADD_NODE_TO_WORKFLOW'; payload: { workflowId: string; node: Omit<WorkflowNode, 'id'> } }
   | { type: 'UPDATE_NODE_IN_WORKFLOW'; payload: { workflowId: string; nodeId: string; updates: Partial<WorkflowNode> } }
-  | { type: 'SELECT_NODE'; payload: WorkflowNode }
+  | { type: 'SELECT_NODE'; payload: WorkflowNode | null }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
   | { type: 'LOAD_DATA'; payload: { workflows: Workflow[]; activityTemplates: ActivityTemplate[] } };

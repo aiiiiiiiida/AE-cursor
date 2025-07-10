@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { ActivityTemplate, UIElement, ConditionalFollowUp } from '../types';
 import { DynamicForm } from './DynamicForm';
-import { ChevronUp, ChevronDown, X, Plus } from 'lucide-react';
+import { ChevronUp, ChevronDown, X, Plus, Star, Sparkle, UserRoundPlus } from 'lucide-react';
 import ScreeningQuestionsModule from './ScreeningQuestionsModule';
 
 const AVAILABLE_ICONS = [
@@ -29,7 +29,10 @@ const AVAILABLE_ICONS = [
   { name: 'Checklist', component: Lucide.CheckSquare },
   { name: 'Video', component: Lucide.Video },
    { name: 'ExternalLink', component: Lucide.ExternalLink },
-  { name: 'Robot', component: Lucide.Bot }
+  { name: 'Robot', component: Lucide.Bot },
+  { name: 'Star', component: Star },
+  { name: 'Sparkle', component: Sparkle },
+  { name: 'UserRoundPlus', component: UserRoundPlus }
 ];
 
 const ICON_COLORS = [
@@ -211,6 +214,7 @@ export function ActivityConfigurator() {
             {state.activityTemplates.map((template) => {
               const IconComponent = getIconComponent(template.icon, template.customIconSvg);
               const iconColor = getIconColor(template.iconColor || 'purple');
+              const isCondition = template.name.toLowerCase() === 'condition' || template.icon === 'Split';
               
               return (
                 <div
@@ -228,7 +232,7 @@ export function ActivityConfigurator() {
                         className="w-8 h-8 rounded-lg flex items-center justify-center"
                         style={{ backgroundColor: iconColor.bg }}
                       >
-                        <IconComponent className="w-4 h-4" style={{ color: iconColor.iconColor }} />
+                        <IconComponent className="w-4 h-4" style={{ color: iconColor.iconColor, ...(isCondition ? { transform: 'rotate(90deg)' } : {}) }} />
                       </div>
                       <div>
                         <h3 className="font-medium text-slate-900">{template.name}</h3>
@@ -614,6 +618,7 @@ function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePrevi
                   const IconComponent = getIconComponent(iconOption.name, editedTemplate.customIconSvg);
                   const isSelected = editedTemplate.icon === iconOption.name;
                   const iconColor = getIconColor(editedTemplate.iconColor || 'purple');
+                  const isCondition = iconOption.name === 'Split';
                   return (
                     <button
                       key={iconOption.name}
@@ -630,7 +635,7 @@ function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePrevi
                         className="w-6 h-6 rounded flex items-center justify-center mx-auto"
                         style={{ backgroundColor: iconColor.bg }}
                       >
-                        <IconComponent className="w-4 h-4" style={{ color: iconColor.iconColor }} />
+                        <IconComponent className="w-4 h-4" style={{ color: iconColor.iconColor, ...(isCondition ? { transform: 'rotate(90deg)' } : {}) }} />
                       </div>
                     </button>
                   );
@@ -1110,6 +1115,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
           <option value="number">Numerical Input</option>
           <option value="date">Date Picker</option>
           <option value="screening-questions">Screening Questions Module</option>
+          <option value="conditions-module">Conditions Module</option>
         </select>
         <div className="flex items-center space-x-1">
           <button
@@ -1149,7 +1155,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
               placeholder="Enter text content..."
             />
           </div>
-        ) : element.type !== 'section-divider' && element.type !== 'screening-questions' && (
+        ) : element.type !== 'section-divider' && element.type !== 'screening-questions' && element.type !== 'conditions-module' && (
           <div className={element.type === 'toggle' ? 'col-span-2' : ''}>
             <label className="block text-xs font-medium text-slate-600 mb-1">Label</label>
             <input
@@ -1161,7 +1167,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
             />
           </div>
         )}
-        {element.type !== 'section-divider' && element.type !== 'text-block' && element.type !== 'number' && element.type !== 'date' && element.type !== 'radio' && element.type !== 'toggle' && element.type !== 'screening-questions' && (
+        {element.type !== 'section-divider' && element.type !== 'text-block' && element.type !== 'number' && element.type !== 'date' && element.type !== 'radio' && element.type !== 'toggle' && element.type !== 'screening-questions' && element.type !== 'conditions-module' && (
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Placeholder</label>
             <input

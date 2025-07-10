@@ -3,6 +3,7 @@ import { UIElement, ConditionalFollowUp } from '../types';
 import { Upload, Minus, X, ChevronDown, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { Play, Zap, Mail, Globe, Database, FileText, Calendar, Users, Clock, CheckCircle, AlertCircle, Settings, Split, Hourglass, MessageCircle, CheckSquare, Search, User, MessageCircle as Message, Image, Tag, ListChecks as Checklist, Video, ExternalLink, Notebook as Robot } from 'lucide-react';
 import ScreeningQuestionsModule from './ScreeningQuestionsModule';
+import ConditionsModule from './ConditionsModule';
 
 const AVAILABLE_ICONS = [
   { name: 'Play', component: Play },
@@ -319,6 +320,11 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
     });
   }, [elements]);
 
+  // Keep formValues in sync with values prop (fixes stale state after branch/node deletion)
+  useEffect(() => {
+    setFormValues(values);
+  }, [values]);
+
   const indentClass = level > 0 ? `ml-0 ` : '';
   // In the rendering logic, for each button, render its dynamic elements (dynamicElements[element.id]) immediately before the button.
   // Remove the use of allElements = [...filteredElements, ...Object.values(dynamicElements).flat()];
@@ -356,6 +362,34 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
           return (
             <div key={element.id} className="md:col-span-2">
               <ScreeningQuestionsModule />
+            </div>
+          );
+        }
+        if (element.type === 'conditions-module') {
+          // Controlled branches: get from formValues or default
+          const branches = formValues[element.id]?.branches || [
+            { name: 'Branch 1', outerLogic: 'or', groups: [
+              { lines: [{ property: '', operator: 'is', value: '' }], groupLogic: 'or' }
+            ] }
+          ];
+          const handleBranchesChange = (newBranches: any) => {
+            const branchNames = newBranches.map((b: any) => b.name);
+            // Detect deleted branches
+            const prevBranchNames = (formValues[element.id]?.branches || []).map((b: any) => b.name);
+            const deletedBranches = prevBranchNames.filter((name: string) => !branchNames.includes(name));
+            const newElementValue = { ...formValues[element.id], branches: newBranches };
+            const newValues = { ...formValues, [element.id]: newElementValue, branches: branchNames };
+            if (deletedBranches.length > 0) {
+              console.log('DynamicForm: Deleting branches', deletedBranches, 'with values', newValues);
+              onChange?.({ ...newValues, __deleteNodesInBranches: deletedBranches });
+            } else {
+              onChange?.(newValues);
+            }
+            setFormValues(newValues);
+          };
+          return (
+            <div key={element.id} className="md:col-span-2">
+              <ConditionsModule branches={branches} onBranchesChange={handleBranchesChange} />
             </div>
           );
         }

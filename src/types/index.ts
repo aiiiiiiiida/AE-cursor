@@ -5,7 +5,7 @@ export interface ConditionalFollowUp {
 
 export interface UIElement {
   id: string;
-  type: 'text' | 'dropdown' | 'radio' | 'checkbox' | 'button' | 'section-divider' | 'text-block' | 'toggle' | 'file-upload' | 'textarea' | 'number' | 'date' | 'screening-questions';
+  type: 'text' | 'dropdown' | 'radio' | 'checkbox' | 'button' | 'section-divider' | 'text-block' | 'toggle' | 'file-upload' | 'textarea' | 'number' | 'date' | 'screening-questions' | 'conditions-module';
   label: string;
   options?: string[];
   required?: boolean;
@@ -83,7 +83,7 @@ export interface AppState {
   activityTemplates: ActivityTemplate[];
   selectedWorkflow?: Workflow;
   selectedActivityTemplate?: ActivityTemplate;
-  selectedNode?: WorkflowNode;
+  selectedNode?: WorkflowNode | null;
   loading: boolean;
   error: string | null;
 }

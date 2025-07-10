@@ -1,3 +1,16 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Override browser autofill and focus ring color for inputs */
+input:-webkit-autofill,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:active {
+  box-shadow: 0 0 0 2px #2927B2 inset !important;
+  -webkit-box-shadow: 0 0 0 2px #2927B2 inset !important;
+  border-color: #2927B2 !important;
+  outline: none !important;
+  -webkit-text-fill-color: inherit;
+  transition: background-color 5000s ease-in-out 0s;
+}
