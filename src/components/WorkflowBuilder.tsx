@@ -73,6 +73,12 @@ export function WorkflowBuilder() {
   const workflow = state.workflows.find(w => w.id === workflowId);
   const selectedNode = state.selectedNode;
 
+  // Reset selectedNode to null when workflowId changes (so no side panel is open by default)
+  useEffect(() => {
+    dispatch({ type: 'SELECT_NODE', payload: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workflowId]);
+
   if (workflow) {
     console.log('WorkflowBuilder: Rendering nodes', workflow.nodes.map(n => n.id));
   }
