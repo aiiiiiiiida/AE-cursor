@@ -109,15 +109,16 @@ export function WorkflowsTable() {
         <div className="flex items-center space-x-3">
           <button
             onClick={openActivityConfigurator}
-            className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-            title="Configure Activity Templates"
+            className="flex items-center text-sm space-x-2  font-medium pl-3 pr-4 py-2 rounded-xl border border-[#8C95A8] text-[#2927B2] hover:bg-slate-200 transition-colors"
+            title="Manage activities"
           >
-            <Settings className="w-5 h-5" />
+            <Settings className="w-4 h-4" />
+            <span>Manage activities</span>
           </button>
           <button
             onClick={handleCreateWorkflow}
             disabled={isCreating}
-            className="bg-[#4D3EE0] text-white text-sm px-4 py-2 rounded-xl font-medium hover:bg-[#2927B2] transition-all duration-200 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-[#4D3EE0] text-white text-sm pl-3 pr-4 py-2 rounded-xl font-medium hover:bg-[#2927B2] transition-all duration-200 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isCreating ? (
               <>
