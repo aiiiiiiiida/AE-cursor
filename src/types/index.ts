@@ -83,6 +83,10 @@ export interface Workflow {
   triggerMetadata?: Record<string, any>; // Store trigger configuration separately
   createdAt: Date;
   updatedAt: Date;
+  channel?: string;
+  version?: number;
+  locale?: string;
+  creator?: string;
 }
 
 export interface AppState {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Copy, Trash2, Edit, Play, Calendar, Activity, MoreHorizontal, MoreVertical, Globe, Settings, AlertTriangle, X } from 'lucide-react';
+import { Plus, Search, Copy, Trash2, Edit, Play, Calendar, Activity, MoreHorizontal, MoreVertical, Globe, Settings, AlertTriangle, X, Bot } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Workflow } from '../types';
 
@@ -82,26 +82,6 @@ export function WorkflowsTable() {
     } else {
       setSelectedWorkflows(filteredWorkflows.map(w => w.id));
     }
-  };
-
-  // Dummy data generators
-  const getRandomChannel = () => {
-    const channels = ['Web', 'Mobile', 'API', 'Email'];
-    return channels[Math.floor(Math.random() * channels.length)];
-  };
-
-  const getRandomVersion = () => {
-    return Math.floor(Math.random() * 20) + 1;
-  };
-
-  const getRandomLocale = () => {
-    const locales = ['en_US', 'en_GB', 'fr_FR', 'de_DE', 'es_ES'];
-    return locales[Math.floor(Math.random() * locales.length)];
-  };
-
-  const getRandomCreator = () => {
-    const creators = ['Hannah Belle', 'Matthew Stone', 'Sarah Johnson', 'Mike Chen', 'Emma Wilson'];
-    return creators[Math.floor(Math.random() * creators.length)];
   };
 
   if (state.loading) {
@@ -225,26 +205,30 @@ export function WorkflowsTable() {
                     </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center space-x-2">
-                        <Globe className="w-4 h-4 text-slate-400" />
-                        <span className="text-sm text-slate-600">{getRandomChannel()}</span>
+                        {workflow.channel === 'Chatbot' ? (
+                          <Bot className="w-4 h-4 text-slate-400" />
+                        ) : (
+                          <Globe className="w-4 h-4 text-slate-400" />
+                        )}
+                        <span className="text-sm text-slate-600">{workflow.channel}</span>
                       </div>
                     </td>
                     <td className="py-4 px-6">
-                      <span className="text-sm text-slate-600">{getRandomVersion()}</span>
+                      <span className="text-sm text-slate-600">{workflow.version}</span>
                     </td>
                     <td className="py-4 px-6">
-                      <span className="text-sm text-slate-600">{getRandomLocale()}</span>
+                      <span className="text-sm text-slate-600">{workflow.locale}</span>
                     </td>
                     <td className="py-4 px-6">
                       <div>
                         <div className="text-sm text-slate-900">{workflow.updatedAt.toLocaleDateString()}</div>
-                        <div className="text-xs text-slate-500">by {getRandomCreator()}</div>
+                        <div className="text-xs text-slate-500">by {workflow.creator}</div>
                       </div>
                     </td>
                     <td className="py-4 px-6">
                       <div>
                         <div className="text-sm text-slate-900">{workflow.createdAt.toLocaleDateString()}</div>
-                        <div className="text-xs text-slate-500">by {getRandomCreator()}</div>
+                        <div className="text-xs text-slate-500">by {workflow.creator}</div>
                       </div>
                     </td>
                     <td className="py-4 px-6">

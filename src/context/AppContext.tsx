@@ -182,7 +182,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         status: workflow.status,
         triggerMetadata: workflow.trigger_metadata || {},
         createdAt: new Date(workflow.created_at),
-        updatedAt: new Date(workflow.updated_at)
+        updatedAt: new Date(workflow.updated_at),
+        channel: workflow.channel,
+        version: workflow.version,
+        locale: workflow.locale,
+        creator: workflow.creator
       }));
 
       dispatch({ 
@@ -299,11 +303,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const getRandomChannel = () => {
+    const channels = ['Web', 'Chatbot'];
+    return channels[Math.floor(Math.random() * channels.length)];
+  };
+  const getRandomVersion = () => Math.floor(Math.random() * 20) + 1;
+  const getRandomLocale = () => {
+    const locales = ['en_US', 'en_GB', 'fr_FR', 'de_DE', 'es_ES'];
+    return locales[Math.floor(Math.random() * locales.length)];
+  };
+  const getRandomCreator = () => {
+    const creators = ['Hannah Belle', 'Matthew Stone', 'Sarah Johnson', 'Mike Chen', 'Emma Wilson'];
+    return creators[Math.floor(Math.random() * creators.length)];
+  };
+
   const createWorkflow = async (workflowData: Omit<Workflow, 'id' | 'createdAt' | 'updatedAt'>): Promise<Workflow> => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
       dispatch({ type: 'SET_ERROR', payload: null });
-      
+      const channel = workflowData.channel || getRandomChannel();
+      const version = workflowData.version || getRandomVersion();
+      const locale = workflowData.locale || getRandomLocale();
+      const creator = workflowData.creator || getRandomCreator();
       const { data, error } = await supabase
         .from('workflows')
         .insert([{
@@ -312,7 +333,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
           nodes: workflowData.nodes,
           connections: workflowData.connections,
           status: workflowData.status,
-          trigger_metadata: workflowData.triggerMetadata || {}
+          trigger_metadata: workflowData.triggerMetadata || {},
+          channel,
+          version,
+          locale,
+          creator
         }])
         .select()
         .single();
@@ -328,14 +353,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         status: data.status,
         triggerMetadata: data.trigger_metadata || {},
         createdAt: new Date(data.created_at),
-        updatedAt: new Date(data.updated_at)
+        updatedAt: new Date(data.updated_at),
+        channel: data.channel,
+        version: data.version,
+        locale: data.locale,
+        creator: data.creator
       };
 
       dispatch({ type: 'CREATE_WORKFLOW', payload: newWorkflow });
       dispatch({ type: 'SET_LOADING', payload: false });
-      
       return newWorkflow;
-      
     } catch (error) {
       console.error('Error creating workflow:', error);
       dispatch({ type: 'SET_ERROR', payload: `Failed to create workflow: ${(error as any).message}` });
