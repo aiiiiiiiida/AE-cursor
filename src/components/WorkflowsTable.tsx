@@ -135,12 +135,15 @@ export function WorkflowsTable() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+      <div className="bg-white rounded-xl border border-[#D1D5DC] shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-slate-200">
-                <th className="text-left py-3 px-6 w-12">
+              <tr className="border-b border-[#D1D5DC]">
+              <th
+  className="text-left py-2 px-6 w-12 bg-[#F8F9FB]"
+  style={{ borderTopLeftRadius: '10px' }}
+>
                   <input
                     type="checkbox"
                     checked={selectedWorkflows.length === filteredWorkflows.length && filteredWorkflows.length > 0}
@@ -148,14 +151,15 @@ export function WorkflowsTable() {
                     className="rounded border-slate-300"
                   />
                 </th>
-                <th className="text-left py-3 px-6 text-sm font-medium text-slate-600">Name</th>
-                <th className="text-left py-3 px-6 text-sm font-medium text-slate-600">Status</th>
-                <th className="text-left py-3 px-6 text-sm font-medium text-slate-600">Channel</th>
-                <th className="text-left py-3 px-6 text-sm font-medium text-slate-600">Version</th>
-                <th className="text-left py-3 px-6 text-sm font-medium text-slate-600">Locale</th>
-                <th className="text-left py-3 px-6 text-sm font-medium text-slate-600">Modified</th>
-                <th className="text-left py-3 px-6 text-sm font-medium text-slate-600">Set Live</th>
-                <th className="w-12"></th>
+                <th className="text-left py-2 px-6 text-sm font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Name</th>
+                <th className="text-left py-2 px-6 text-sm font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Status</th>
+                <th className="text-left py-2 px-6 text-sm font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Channel</th>
+                <th className="text-left py-2 px-6 text-sm font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Version</th>
+                <th className="text-left py-2 px-6 text-sm font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Locale</th>
+                <th className="text-left py-2 px-6 text-sm font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Modified</th>
+                <th className="text-left py-2 px-6 text-sm font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Set Live</th>
+                <th className="w-12 bg-[#F8F9FB] border-l border-l-[#D1D5DC]" style={{ borderTopRightRadius: '10px' }}></th>
+
               </tr>
             </thead>
             <tbody>
@@ -187,7 +191,7 @@ export function WorkflowsTable() {
                     </td>
                     <td className="py-4 px-6">
                       <div>
-                        <div className="font-medium text-slate-900">{workflow.name}</div>
+                        <div className="font-medium text-sm text-[#464F5E]">{workflow.name}</div>
                         {workflow.description && (
                           <div className="text-sm text-slate-500">{workflow.description}</div>
                         )}
