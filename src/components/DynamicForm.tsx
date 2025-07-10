@@ -4,6 +4,7 @@ import { Upload, Minus, X, ChevronDown, Plus, RotateCcw, Trash2 } from 'lucide-r
 import { Play, Zap, Mail, Globe, Database, FileText, Calendar, Users, Clock, CheckCircle, AlertCircle, Settings, Split, Hourglass, MessageCircle, CheckSquare, Search, User, MessageCircle as Message, Image, Tag, ListChecks as Checklist, Video, ExternalLink, Notebook as Robot } from 'lucide-react';
 import ScreeningQuestionsModule from './ScreeningQuestionsModule';
 import ConditionsModule from './ConditionsModule';
+import TriggerConditionsModule from './TriggerConditionsModule';
 
 const AVAILABLE_ICONS = [
   { name: 'Play', component: Play },
@@ -409,6 +410,16 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
                   </div>
                 ))}
               </div>
+            </div>
+          );
+        }
+        if (element.type === 'trigger-conditions-module') {
+          return (
+            <div key={element.id} className="md:col-span-2">
+              <TriggerConditionsModule
+                value={formValues[element.id] || []}
+                onChange={val => handleValueChange(element.id, val)}
+              />
             </div>
           );
         }

@@ -4,8 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { ActivityTemplate, UIElement, ConditionalFollowUp } from '../types';
 import { DynamicForm } from './DynamicForm';
-import { ChevronUp, ChevronDown, X, Plus, Star, Sparkle, UserRoundPlus } from 'lucide-react';
+import { ChevronUp, ChevronDown, X, Plus, Star, Sparkle, UserRoundPlus, ArrowDown10, MousePointer, Text, Calendar as LucideCalendar } from 'lucide-react';
 import ScreeningQuestionsModule from './ScreeningQuestionsModule';
+import TriggerConditionsModule from './TriggerConditionsModule';
 
 const AVAILABLE_ICONS = [
   
@@ -370,6 +371,7 @@ function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePrevi
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [showSvgInput, setShowSvgInput] = useState(false);
   const [svgDraft, setSvgDraft] = useState<string>('');
+  const [previewValues, setPreviewValues] = useState<Record<string, any>>({});
 
   // Update categories from all activity templates
   useEffect(() => {
@@ -512,7 +514,11 @@ function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePrevi
       {previewMode ? (
         <div className="space-y-4">
           <h4 className="font-medium text-slate-900">Preview Mode</h4>
-          <DynamicForm elements={editedTemplate.sidePanelElements} />
+          <DynamicForm
+            elements={editedTemplate.sidePanelElements}
+            values={previewValues}
+            onChange={setPreviewValues}
+          />
         </div>
       ) : (
         <div className="space-y-4">
@@ -610,114 +616,107 @@ function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePrevi
                 disabled={loading}
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Icon</label>
-              <div className="flex flex-wrap gap-1">
+            <div className="flex items-center justify-between mb-2">
+  <label className="block text-sm font-medium text-slate-700">Icon</label>
+  <div className="flex items-center">
+    <div className="flex rounded-xl bg-white border border-slate-200 p-0.5">
+      {["purple", "orange"].map((color) => {
+        const colorConfig = ICON_COLORS.find(c => c.value === color);
+        const isSelected = (editedTemplate.iconColor || 'purple') === color;
+        return (
+          <button
+            key={color}
+            type="button"
+            onClick={() => setEditedTemplate({ ...editedTemplate, iconColor: color })}
+            className={`flex flex-row items-center gap-1 px-2 py-1 rounded-lg focus:outline-none transition-all duration-200 ${
+              isSelected ? 'bg-white border border-[#4D3EE0] shadow-sm' : 'bg-transparent border border-transparent'
+            }`}
+            style={{ minWidth: 40 }}
+            aria-label={colorConfig?.name}
+          >
+            <span
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: colorConfig?.iconColor }}
+            />
+            <span
+              className="text-[10px] font-medium text-slate-600"
+              
+            >
+              {colorConfig?.name}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  </div>
+</div>
 
-                {AVAILABLE_ICONS.map((iconOption) => {
-                  const IconComponent = getIconComponent(iconOption.name, editedTemplate.customIconSvg);
-                  const isSelected = editedTemplate.icon === iconOption.name;
-                  const iconColor = getIconColor(editedTemplate.iconColor || 'purple');
-                  const isCondition = iconOption.name === 'Split';
-                  return (
-                    <button
-                      key={iconOption.name}
-                      type="button"
-                      onClick={() => setEditedTemplate({ ...editedTemplate, icon: normalizeIconName(iconOption.name) })}
-                      disabled={loading}
-                      className={`p-0.5 rounded-lg border transition-all duration-200 disabled:opacity-50 ${
-                        isSelected
-                          ? 'border-[#4D3EE0] bg-blue-50'
-                          : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                      }`}
+            <div className="flex flex-wrap gap-1 mb-4">
+              {AVAILABLE_ICONS.map((iconOption) => {
+                const IconComponent = getIconComponent(iconOption.name, editedTemplate.customIconSvg);
+                const isSelected = editedTemplate.icon === iconOption.name;
+                const iconColor = ICON_COLORS.find(c => c.value === (editedTemplate.iconColor || 'purple')) || ICON_COLORS[0];
+                const isCondition = iconOption.name === 'Split';
+                return (
+                  <button
+                    key={iconOption.name}
+                    type="button"
+                    onClick={() => setEditedTemplate({ ...editedTemplate, icon: normalizeIconName(iconOption.name) })}
+                    disabled={loading}
+                    className={`p-0.5 rounded-lg border transition-all duration-200 disabled:opacity-50 ${
+                      isSelected
+                        ? 'border-[#4D3EE0] bg-blue-50'
+                        : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div
+                      className="w-6 h-6 rounded flex items-center justify-center mx-auto"
+                      style={{ backgroundColor: iconColor.bg }}
                     >
-                      <div
-                        className="w-6 h-6 rounded flex items-center justify-center mx-auto"
-                        style={{ backgroundColor: iconColor.bg }}
-                      >
-                        <IconComponent className="w-4 h-4" style={{ color: iconColor.iconColor, ...(isCondition ? { transform: 'rotate(90deg)' } : {}) }} />
-                      </div>
+                      <IconComponent className="w-4 h-4" style={{ color: iconColor.iconColor, ...(isCondition ? { transform: 'rotate(90deg)' } : {}) }} />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            {showSvgInput && (
+              <div className="w-full mt-2 space-y-2">
+                <textarea
+                  value={svgDraft}
+                  onChange={e => setSvgDraft(e.target.value)}
+                  rows={4}
+                  placeholder="Paste SVG markup here"
+                  className="w-full px-2 py-1 border text-xs font-mono border-slate-300 rounded"
+                />
+                {svgDraft.trim() !== '' && (
+                  <div className="flex items-center space-x-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditedTemplate({ ...editedTemplate, icon: 'Custom', customIconSvg: svgDraft });
+                        setShowSvgInput(false);
+                        setSvgDraft('');
+                      }}
+                      className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
+                    >
+                      Save SVG
                     </button>
-                  );
-                })}
-                {/* Button to add custom SVG icon */}
-                {/* <button
-                  type="button"
-                  onClick={() => setShowSvgInput(prev => !prev)}
-                  disabled={loading}
-                  className="flex items-center px-2 py-1 border border-dashed border-slate-300 rounded-lg text-xs text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-                >
-                  <Plus className="w-3 h-3 mr-1" /> Add custom SVG
-                </button> */}
-
-                {showSvgInput && (
-                  <div className="w-full mt-2 space-y-2">
-                    <textarea
-                      value={svgDraft}
-                      onChange={e => setSvgDraft(e.target.value)}
-                      rows={4}
-                      placeholder="Paste SVG markup here"
-                      className="w-full px-2 py-1 border text-xs font-mono border-slate-300 rounded"
+                    <button
+                      type="button"
+                      onClick={() => { setShowSvgInput(false); setSvgDraft(''); }}
+                      className="px-3 py-1 border text-xs rounded hover:bg-slate-100"
+                    >
+                      Cancel
+                    </button>
+                    {/* preview */}
+                    <span
+                      className="w-6 h-6 inline-flex border border-slate-200 rounded"
+                      dangerouslySetInnerHTML={{ __html: svgDraft }}
                     />
-                    {svgDraft.trim() !== '' && (
-                      <div className="flex items-center space-x-3">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditedTemplate({ ...editedTemplate, icon: 'Custom', customIconSvg: svgDraft });
-                            setShowSvgInput(false);
-                            setSvgDraft('');
-                          }}
-                          className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
-                        >
-                          Save SVG
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { setShowSvgInput(false); setSvgDraft(''); }}
-                          className="px-3 py-1 border text-xs rounded hover:bg-slate-100"
-                        >
-                          Cancel
-                        </button>
-                        {/* preview */}
-                        <span
-                          className="w-6 h-6 inline-flex border border-slate-200 rounded"
-                          dangerouslySetInnerHTML={{ __html: svgDraft }}
-                        />
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Icon Color</label>
-              <div className="flex space-x-1">
-                {ICON_COLORS.map((colorOption) => {
-                  const isSelected = (editedTemplate.iconColor || 'purple') === colorOption.value;
-                  const IconComponent = getIconComponent(editedTemplate.icon);
-                  return (
-                    <button
-                      key={colorOption.value}
-                      type="button"
-                      onClick={() => setEditedTemplate({ ...editedTemplate, iconColor: colorOption.value })}
-                      disabled={loading}
-                      className={`flex items-center space-x-2 px-2 py-2 rounded-lg border transition-all duration-200 disabled:opacity-50 ${
-                        isSelected
-                          ? 'border-[#4D3EE0] bg-blue-50'
-                          : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                      }`}
-                    >
-                      <div
-                        className="w-3 h-3 rounded-full flex items-center justify-center"
-                        style={{ backgroundColor: colorOption.iconColor }}
-                      ></div>
-                      {/* <span className="text-sm font-medium text-slate-700">{colorOption.name}</span> */}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Tab Bar for switching between Configuration, Advanced, User Interface */}
@@ -808,6 +807,50 @@ interface MapDescriptionInputProps {
   disabled?: boolean;
 }
 
+// --- Custom Dropdown for Element Suggestions with Previews ---
+function ElementSuggestionDropdown({
+  elements,
+  onSelect,
+  position,
+  onClose,
+  getIconComponent
+}: {
+  elements: any[];
+  onSelect: (element: any) => void;
+  position: { top: number; left: number };
+  onClose?: () => void;
+  getIconComponent?: (type: string) => React.ComponentType<any>;
+}) {
+  return (
+    <div
+      className="absolute z-50 bg-white border border-slate-300 rounded-lg shadow-lg max-h-64 overflow-y-auto min-w-[250px]"
+      style={{ top: position.top, left: position.left }}
+      tabIndex={-1}
+    >
+      <div className="p-2 text-xs text-slate-500 border-b">
+        Select an element to reference:
+      </div>
+      {elements.map((element) => (
+        <button
+          key={element.id}
+          onClick={() => { onSelect(element); if (onClose) onClose(); }}
+          className="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm border-b border-slate-100 last:border-b-0 flex items-center gap-3"
+        >
+          {/* Preview icon or type visual */}
+         
+          <span className="flex flex-col items-start">
+            <span className="font-medium text-slate-900">{element.label}</span>
+            <span className="text-xs text-slate-500 capitalize">
+              {element.id?.startsWith('new-') ? `Create new ${element.type}` : `${element.type}`}
+            </span>
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// --- Refactor MapDescriptionInput to use ElementSuggestionDropdown ---
 function MapDescriptionInput({ value, onChange, uiElements, disabled }: MapDescriptionInputProps) {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [cursorPosition, setCursorPosition] = useState(0);
@@ -815,13 +858,10 @@ function MapDescriptionInput({ value, onChange, uiElements, disabled }: MapDescr
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
-  // Get all available UI elements (including nested conditional follow-up elements)
   const getAllUIElements = (elements: UIElement[]): UIElement[] => {
     const allElements: UIElement[] = [];
-    
     const traverse = (els: UIElement[]) => {
       els.forEach(el => {
-        // Only include elements that can have user input values
         if (!['section-divider', 'text-block', 'button'].includes(el.type)) {
           allElements.push(el);
         }
@@ -832,44 +872,32 @@ function MapDescriptionInput({ value, onChange, uiElements, disabled }: MapDescr
         }
       });
     };
-    
     traverse(elements);
     return allElements;
   };
-
   const availableElements = getAllUIElements(uiElements);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     const cursorPos = e.target.selectionStart;
-    
     onChange(newValue);
     setCursorPosition(cursorPos);
-
-    // Check if user typed '#' to show suggestions
     const textBeforeCursor = newValue.substring(0, cursorPos);
     const lastHashIndex = textBeforeCursor.lastIndexOf('#');
-    
     if (lastHashIndex !== -1) {
       const textAfterHash = textBeforeCursor.substring(lastHashIndex + 1);
-      // Show suggestions if we just typed # or if we're still typing after #
       if (textAfterHash === '' || /^[a-zA-Z0-9\s]*$/.test(textAfterHash)) {
         setShowSuggestions(true);
-        
-        // Calculate position for suggestions dropdown
         if (textareaRef.current) {
           const textarea = textareaRef.current;
           const textBeforeHash = textBeforeCursor.substring(0, lastHashIndex);
           const lines = textBeforeHash.split('\n');
           const currentLine = lines.length - 1;
           const charInLine = lines[currentLine].length;
-          
-          // Approximate position calculation
           const lineHeight = 20;
           const charWidth = 8;
           const top = currentLine * lineHeight + 30;
           const left = charInLine * charWidth + 10;
-          
           setSuggestionPosition({ top, left });
         }
       } else {
@@ -882,22 +910,17 @@ function MapDescriptionInput({ value, onChange, uiElements, disabled }: MapDescr
 
   const handleElementSelect = (element: UIElement) => {
     if (!textareaRef.current) return;
-
     const textarea = textareaRef.current;
     const textBeforeCursor = value.substring(0, cursorPosition);
     const textAfterCursor = value.substring(cursorPosition);
     const lastHashIndex = textBeforeCursor.lastIndexOf('#');
-    
     if (lastHashIndex !== -1) {
       const beforeHash = textBeforeCursor.substring(0, lastHashIndex);
       const replacement = `#{${element.label}}`;
       const newValue = beforeHash + replacement + textAfterCursor;
       const newCursorPos = beforeHash.length + replacement.length;
-      
       onChange(newValue);
       setShowSuggestions(false);
-      
-      // Set cursor position after the replacement
       setTimeout(() => {
         textarea.focus();
         textarea.setSelectionRange(newCursorPos, newCursorPos);
@@ -911,7 +934,6 @@ function MapDescriptionInput({ value, onChange, uiElements, disabled }: MapDescr
     }
   };
 
-  // Close suggestions when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node) &&
@@ -919,7 +941,6 @@ function MapDescriptionInput({ value, onChange, uiElements, disabled }: MapDescr
         setShowSuggestions(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
@@ -936,33 +957,14 @@ function MapDescriptionInput({ value, onChange, uiElements, disabled }: MapDescr
         rows={2}
         placeholder="Description shown on the workflow map. Use # to reference UI element values."
       />
-      
       {showSuggestions && availableElements.length > 0 && (
-        <div
-          ref={suggestionsRef}
-          className="absolute z-50 bg-white border border-slate-300 rounded-lg shadow-lg max-h-48 overflow-y-auto"
-          style={{
-            top: suggestionPosition.top,
-            left: suggestionPosition.left,
-            minWidth: '200px'
-          }}
-        >
-          <div className="p-2 text-xs text-slate-500 border-b">
-            Select a UI element to reference:
-          </div>
-          {availableElements.map((element) => (
-            <button
-              key={element.id}
-              onClick={() => handleElementSelect(element)}
-              className="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm border-b border-slate-100 last:border-b-0"
-            >
-              <div className="font-medium text-slate-900">{element.label}</div>
-              <div className="text-xs text-slate-500 capitalize">{element.type}</div>
-            </button>
-          ))}
-        </div>
+        <ElementSuggestionDropdown
+          elements={availableElements}
+          onSelect={handleElementSelect}
+          position={suggestionPosition}
+          onClose={() => setShowSuggestions(false)}
+        />
       )}
-      
       <div className="mt-1 text-xs text-slate-500">
         Type <code className="bg-slate-100 px-1 rounded">#</code> to reference UI element values in the description.
       </div>
@@ -1096,13 +1098,13 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
         </div>
       )} */}
       <div className="flex items-center justify-between mb-3">
-        <select
+        <UIElementTypeDropdown
           value={element.type}
-          onChange={(e) => {
-            const newType = e.target.value as UIElement['type'];
-            if (newType === 'events-module' && (!element.events || element.events.length === 0)) {
+          onChange={(newType) => {
+            const castType = newType as UIElement['type'];
+            if (castType === 'events-module' && (!element.events || element.events.length === 0)) {
               onUpdate({
-                type: newType,
+                type: castType,
                 events: [
                   { title: 'The Dream Career Conference', subtitle: 'High Volume Hiring', tag: 'Upcoming' },
                   { title: 'Technical Professionals Meetup', subtitle: 'High Volume Hiring', tag: 'Upcoming' },
@@ -1111,28 +1113,11 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
                 label: ''
               });
             } else {
-              onUpdate({ type: newType });
+              onUpdate({ type: castType });
             }
           }}
           disabled={disabled}
-          className="px-3 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
-        >
-          <option value="text">Text Input</option>
-          <option value="textarea">Textarea</option>
-          <option value="dropdown">Dropdown</option>
-          <option value="radio">Radio Buttons</option>
-          <option value="checkbox">Checkbox</option>
-          <option value="toggle">Toggle</option>
-          <option value="button">Button</option>
-          <option value="file-upload">File Upload</option>
-          <option value="section-divider">Section Divider</option>
-          <option value="text-block">Text Block</option>
-          <option value="number">Numerical Input</option>
-          <option value="date">Date Picker</option>
-          <option value="screening-questions">Screening Questions Module</option>
-          <option value="conditions-module">Conditions Module</option>
-          <option value="events-module">Events Module</option>
-        </select>
+        />
         <div className="flex items-center space-x-1">
           <button
             onClick={onMoveUp}
@@ -1899,6 +1884,7 @@ interface ElementReferenceInputProps {
   disabled?: boolean;
 }
 
+// --- Refactor ElementReferenceInput to use ElementSuggestionDropdown ---
 function ElementReferenceInput({ value, onChange, allElements, disabled }: ElementReferenceInputProps) {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [cursorPosition, setCursorPosition] = useState(0);
@@ -1906,13 +1892,10 @@ function ElementReferenceInput({ value, onChange, allElements, disabled }: Eleme
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
-  // Get all available UI elements (including nested conditional follow-up elements)
   const getAllUIElements = (elements: UIElement[]): UIElement[] => {
     const allElementsList: UIElement[] = [];
-    
     const traverse = (els: UIElement[]) => {
       els.forEach(el => {
-        // Include all elements for button reference
         allElementsList.push(el);
         if (el.conditionalFollowUps) {
           el.conditionalFollowUps.forEach(followUp => {
@@ -1921,12 +1904,9 @@ function ElementReferenceInput({ value, onChange, allElements, disabled }: Eleme
         }
       });
     };
-    
     traverse(elements);
     return allElementsList;
   };
-
-  // Add predefined element types that can be created
   const predefinedElements = [
     { id: 'new-text', label: 'Text Input', type: 'text' },
     { id: 'new-textarea', label: 'Textarea', type: 'textarea' },
@@ -1936,27 +1916,19 @@ function ElementReferenceInput({ value, onChange, allElements, disabled }: Eleme
     { id: 'new-toggle', label: 'Toggle', type: 'toggle' },
     { id: 'new-file-upload', label: 'File Upload', type: 'file-upload' }
   ];
-
   const availableElements = [...getAllUIElements(allElements), ...predefinedElements];
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     const cursorPos = e.target.selectionStart || 0;
-    
     onChange(newValue);
     setCursorPosition(cursorPos);
-
-    // Check if user typed '#' to show suggestions
     const textBeforeCursor = newValue.substring(0, cursorPos);
     const lastHashIndex = textBeforeCursor.lastIndexOf('#');
-    
     if (lastHashIndex !== -1) {
       const textAfterHash = textBeforeCursor.substring(lastHashIndex + 1);
-      // Show suggestions if we just typed # or if we're still typing after #
       if (textAfterHash === '' || /^[a-zA-Z0-9\s]*$/.test(textAfterHash)) {
         setShowSuggestions(true);
-        
-        // Calculate position for suggestions dropdown
         if (inputRef.current) {
           const input = inputRef.current;
           const rect = input.getBoundingClientRect();
@@ -1975,22 +1947,17 @@ function ElementReferenceInput({ value, onChange, allElements, disabled }: Eleme
 
   const handleElementSelect = (element: any) => {
     if (!inputRef.current) return;
-
     const input = inputRef.current;
     const textBeforeCursor = value.substring(0, cursorPosition);
     const textAfterCursor = value.substring(cursorPosition);
     const lastHashIndex = textBeforeCursor.lastIndexOf('#');
-    
     if (lastHashIndex !== -1) {
       const beforeHash = textBeforeCursor.substring(0, lastHashIndex);
       const replacement = `#{${element.label}}`;
       const newValue = beforeHash + replacement + textAfterCursor;
       const newCursorPos = beforeHash.length + replacement.length;
-      
       onChange(newValue);
       setShowSuggestions(false);
-      
-      // Set cursor position after the replacement
       setTimeout(() => {
         input.focus();
         input.setSelectionRange(newCursorPos, newCursorPos);
@@ -2004,7 +1971,6 @@ function ElementReferenceInput({ value, onChange, allElements, disabled }: Eleme
     }
   };
 
-  // Close suggestions when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node) &&
@@ -2012,7 +1978,6 @@ function ElementReferenceInput({ value, onChange, allElements, disabled }: Eleme
         setShowSuggestions(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
@@ -2032,38 +1997,109 @@ function ElementReferenceInput({ value, onChange, allElements, disabled }: Eleme
         className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
         placeholder="Type # to reference elements (e.g., #{Questionnaire})"
       />
-      
       {showSuggestions && availableElements.length > 0 && (
-        <div
-          ref={suggestionsRef}
-          className="absolute z-50 bg-white border border-slate-300 rounded-lg shadow-lg max-h-48 overflow-y-auto"
-          style={{
-            top: suggestionPosition.top,
-            left: suggestionPosition.left,
-            minWidth: '250px'
-          }}
-        >
-          <div className="p-2 text-xs text-slate-500 border-b">
-            Select an element to reference:
-          </div>
-          {availableElements.map((element) => (
-            <button
-              key={element.id}
-              onClick={() => handleElementSelect(element)}
-              className="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm border-b border-slate-100 last:border-b-0"
-            >
-              <div className="font-medium text-slate-900">{element.label}</div>
-              <div className="text-xs text-slate-500 capitalize">
-                {element.id.startsWith('new-') ? `Create new ${element.type}` : `Existing ${element.type}`}
-              </div>
-            </button>
-          ))}
-        </div>
+        <ElementSuggestionDropdown
+          elements={availableElements}
+          onSelect={handleElementSelect}
+          position={suggestionPosition}
+          onClose={() => setShowSuggestions(false)}
+        />
       )}
-      
       <div className="mt-1 text-xs text-slate-500">
         Type <code className="bg-slate-100 px-1 rounded">#</code> to reference existing elements or create new ones.
       </div>
+    </div>
+  );
+}
+
+// --- UI Element Type Dropdown with Previews ---
+const UI_ELEMENT_TYPES = [
+  // User inputs
+  { value: 'text', label: 'Text Input', icon: Lucide.Type, category: 'User inputs' },
+  { value: 'textarea', label: 'Textarea', icon: Lucide.AlignLeft, category: 'User inputs' },
+  { value: 'dropdown', label: 'Dropdown', icon: Lucide.ChevronDownSquare, category: 'User inputs' },
+  { value: 'radio', label: 'Radio Buttons', icon: Lucide.CircleDot, category: 'User inputs' },
+  { value: 'checkbox', label: 'Checkbox', icon: Lucide.CheckSquare, category: 'User inputs' },
+  { value: 'toggle', label: 'Toggle', icon: Lucide.ToggleLeft, category: 'User inputs' },
+  { value: 'file-upload', label: 'File Upload', icon: Lucide.UploadCloud, category: 'User inputs' },
+  { value: 'number', label: 'Numerical Input', icon: ArrowDown10, category: 'User inputs' },
+  { value: 'date', label: 'Date Picker', icon: LucideCalendar, category: 'User inputs' },
+  { value: 'button', label: 'Button', icon: MousePointer, category: 'User inputs' },
+  // Layout
+  { value: 'section-divider', label: 'Section Divider', icon: Lucide.Minus, category: 'Layout' },
+  { value: 'text-block', label: 'Text Block', icon: Text, category: 'Layout' },
+  // Special activities
+  { value: 'screening-questions', label: 'Screening Questions Module', icon: Lucide.ListChecks, category: 'Special activities' },
+  { value: 'conditions-module', label: 'Conditions Module', icon: Lucide.GitBranch, category: 'Special activities' },
+  { value: 'events-module', label: 'Events Module', icon: LucideCalendar, category: 'Special activities' },
+  { value: 'trigger-conditions-module', label: 'Trigger Conditions Module', icon: Lucide.Zap, category: 'Special activities' },
+];
+
+function UIElementTypeDropdown({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [open]);
+  const selected = UI_ELEMENT_TYPES.find(t => t.value === value);
+  // Group by category
+  const grouped = UI_ELEMENT_TYPES.reduce((acc, type) => {
+    if (!acc[type.category]) acc[type.category] = [];
+    acc[type.category].push(type);
+    return acc;
+  }, {} as Record<string, typeof UI_ELEMENT_TYPES>);
+  return (
+    <div className="relative">
+      <button
+        ref={buttonRef}
+        type="button"
+        className={`flex items-center gap-2 px-3 py-1 border border-[#8C95A8] rounded-[10px] text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 ${open ? 'ring-2 ring-blue-500' : ''}`}
+        onClick={() => !disabled && setOpen(o => !o)}
+        disabled={disabled}
+      >
+        {selected ? <selected.icon className="w-4 h-4 text-slate-500" /> : <Lucide.HelpCircle className="w-4 h-4 text-slate-400" />}
+        <span>{selected ? selected.label : 'Select type'}</span>
+        <Lucide.ChevronDown className="w-4 h-4 ml-1 text-slate-400" />
+      </button>
+      {open && (
+        <div
+          ref={dropdownRef}
+          className="absolute left-0 mt-2 z-50 bg-white border border-slate-200 rounded-lg shadow-lg min-w-[320px] max-h-72 overflow-y-auto"
+        >
+          {Object.entries(grouped).map(([category, types]) => (
+            <div key={category} className="mb-1">
+              <div className="text-[10px] font-semibold text-[#8C95A8] uppercase tracking-wider px-3 py-1 bg-[#F5F7FA] rounded mb-1">{category}</div>
+              <div className="flex flex-col gap-0">
+                {types.map(type => (
+                  <button
+                    key={type.value}
+                    type="button"
+                    className={`flex items-center gap-3 w-full px-4 py-2 text-left text-[#464F5E] text-sm hover:bg-gray-50 ${value === type.value ? 'bg-[#F5F4FF] font-medium' : ''}`}
+                    onClick={() => { onChange(type.value); setOpen(false); }}
+                    disabled={disabled}
+                  >
+                    <type.icon className="w-4 h-4 text-slate-500" />
+                    <span>{type.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

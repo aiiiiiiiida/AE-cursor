@@ -5,6 +5,7 @@ const PROPERTY_OPTIONS = [
   { label: 'Job ID', value: 'jobID', values: ['302', '203', '504'] },
   { label: 'Department', value: 'department', values: ['Engineering', 'HR', 'Sales'] },
   { label: 'Country', value: 'country', values: ['US', 'Canada'] },
+  { label: 'Profile skills', value: 'profileSkills', values: ['empty', 'less than 5', 'more than 5'] },
   { label: 'City', value: 'city', values: ['Bucharest', 'Oslo'] },
 ];
 
@@ -226,7 +227,7 @@ export default function ConditionsModule({ branches: propBranches, onBranchesCha
                 {/* Additional lines */}
                 {group.lines.slice(1).map((line: any, idx: number) => (
                   <div key={idx + 1} className="space-y-3 mb-4">
-                    <div className="relative inline-block mb-1" style={{ minWidth: 60, maxWidth: 60 }}>
+                    <div className="relative inline-block mb-1 mt-2" style={{ minWidth: 60, maxWidth: 60 }}>
                       <select
                         className="text-slate-700 font-semibold text-[15px] appearance-none bg-transparent pr-6 focus:outline-none cursor-pointer text-center"
                         style={{ minWidth: 60, maxWidth: 60 }}

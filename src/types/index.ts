@@ -11,7 +11,7 @@ export interface EventCard {
 
 export interface UIElement {
   id: string;
-  type: 'text' | 'dropdown' | 'radio' | 'checkbox' | 'button' | 'section-divider' | 'text-block' | 'toggle' | 'file-upload' | 'textarea' | 'number' | 'date' | 'screening-questions' | 'conditions-module' | 'events-module';
+  type: 'text' | 'dropdown' | 'radio' | 'checkbox' | 'button' | 'section-divider' | 'text-block' | 'toggle' | 'file-upload' | 'textarea' | 'number' | 'date' | 'screening-questions' | 'conditions-module' | 'events-module' | 'trigger-conditions-module';
   label: string;
   options?: string[];
   required?: boolean;

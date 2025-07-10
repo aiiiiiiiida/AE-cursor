@@ -110,10 +110,10 @@ export function WorkflowsTable() {
           <button
             onClick={openActivityConfigurator}
             className="flex items-center text-sm space-x-2  font-medium pl-3 pr-4 py-2 rounded-xl border border-[#8C95A8] text-[#2927B2] hover:bg-slate-200 transition-colors"
-            title="Manage activities"
+            title="Activities"
           >
             <Settings className="w-4 h-4" />
-            <span>Manage activities</span>
+            <span>Activities</span>
           </button>
           <button
             onClick={handleCreateWorkflow}
