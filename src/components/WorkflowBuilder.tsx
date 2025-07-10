@@ -660,7 +660,7 @@ export function WorkflowBuilder() {
                               <path
                                 d={`M${x},0 Q${x},8 ${x},${svgHeight}`}
                                 stroke="#CBD5E1"
-                                strokeWidth="4"
+                                strokeWidth="3"
                                 fill="none"
                               />
                             </React.Fragment>
@@ -679,15 +679,12 @@ export function WorkflowBuilder() {
                               <div className="w-0.5 h-4 bg-slate-300" />
                               {/* If branch is empty, show plus button */}
                               {branchNodes.length === 0 && (
-                                <>
-                                  <button
-                                    onClick={() => handleAddActivity(0, branchName)}
-                                    className="w-6 h-6 bg-gray-400 text-white rounded-lg flex items-center justify-center mt-0 hover:bg-gray-500 transition-colors"
-                                  >
-                                    <Plus className="w-4 h-4" />
-                                  </button>
-                                  <div className="w-0.5 h-4 bg-slate-300" />
-                                </>
+                                <button
+                                  onClick={() => handleAddActivity(0, branchName)}
+                                  className="w-6 h-6 bg-gray-400 text-white rounded-lg flex items-center justify-center mt-0 hover:bg-gray-500 transition-colors"
+                                >
+                                  <Plus className="w-4 h-4" />
+                                </button>
                               )}
                               {/* Render all nodes in this branch */}
                               {branchNodes.map((node, idx) => {
@@ -750,15 +747,12 @@ export function WorkflowBuilder() {
                                     )}
                                     {/* Plus button after last node */}
                                     {isLast && (
-                                      <>
-                                        <button
-                                          onClick={e => handleAddActivity(idx + 1, branchName, e)}
-                                          className="w-6 h-6 bg-gray-400 text-white rounded-lg flex items-center justify-center hover:bg-gray-500 transition-colors"
-                                        >
-                                          <Plus className="w-4 h-4" />
-                                        </button>
-                                        <div className="w-0.5 h-4 bg-slate-300" />
-                                      </>
+                                      <button
+                                        onClick={e => handleAddActivity(idx + 1, branchName, e)}
+                                        className="w-6 h-6 bg-gray-400 text-white rounded-lg flex items-center justify-center hover:bg-gray-500 transition-colors"
+                                      >
+                                        <Plus className="w-4 h-4" />
+                                      </button>
                                     )}
                                   </React.Fragment>
                                 );
