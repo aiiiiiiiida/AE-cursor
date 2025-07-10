@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect, Dispatch, SetStateAction, useRef as useReactRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Play, Save, Eye, Settings, Trash2, Search, X, Edit2, Check, ZoomIn, ZoomOut, Maximize2, Minus, Scan, Mail, Globe, Database, FileText, Calendar, Users, Zap, Clock, CheckCircle, AlertCircle, Split, Image, Bot, Hourglass, User, MessageCircle, Tag, ListChecks, Video, ExternalLink, GitBranch, Star, Sparkle, UserRoundPlus } from 'lucide-react';
+import { ArrowLeft, Plus, Play, Save, Eye, Settings, Trash2, Search, X, Edit2, Check, ZoomIn, ZoomOut, Maximize2, Minus, Scan, Mail, Globe, Database, FileText, Calendar, Users, Zap, Clock, CheckCircle, AlertCircle, Split, Image, Bot, Hourglass, User, MessageCircle, Tag, ListChecks, Video, ExternalLink, GitBranch, Star, Sparkle, UserRoundPlus, MoreVertical } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { WorkflowNode, ActivityTemplate, UIElement, ConditionalFollowUp } from '../types';
 import { DynamicForm } from './DynamicForm';
@@ -48,7 +48,7 @@ function normalizeIconName(name: string): string {
 export function WorkflowBuilder() {
   const { workflowId } = useParams();
   const navigate = useNavigate();
-  const { state, dispatch, updateWorkflow } = useApp();
+  const { state, dispatch, updateWorkflow, deleteWorkflow } = useApp();
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [insertPosition, setInsertPosition] = useState<number | null>(null);
   const [insertBranch, setInsertBranch] = useState<string>('main');
@@ -58,6 +58,8 @@ export function WorkflowBuilder() {
   const [editedTitle, setEditedTitle] = useState('');
   const [isEditingElements, setIsEditingElements] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   
   // Canvas state
   const [zoom, setZoom] = useState(1);
@@ -70,6 +72,10 @@ export function WorkflowBuilder() {
 
   const workflow = state.workflows.find(w => w.id === workflowId);
   const selectedNode = state.selectedNode;
+
+  if (workflow) {
+    console.log('WorkflowBuilder: Rendering nodes', workflow.nodes.map(n => n.id));
+  }
 
   // Find the trigger template
   const triggerTemplate = state.activityTemplates.find(template => 
@@ -101,7 +107,8 @@ export function WorkflowBuilder() {
   // Center canvas when workflow loads or side panel opens/closes
   useEffect(() => {
     centerCanvas();
-  }, [workflow?.id, selectedNode, centerCanvas]); // Re-center when workflow changes or side panel opens/closes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workflow?.id, selectedNode]); // Re-center when workflow changes or side panel opens/closes
 
   if (!workflow) {
     return (
@@ -185,13 +192,18 @@ export function WorkflowBuilder() {
   const handleSelectActivity = async (activity: ActivityTemplate) => {
     if (insertPosition === null) return;
 
+    // Detect if this is a condition node
+    const isCondition = activity.name.toLowerCase().includes('condition') || (activity.description && activity.description.toLowerCase().includes('condition'));
+
     const newNode: Omit<WorkflowNode, 'id'> = {
       activityTemplateId: activity.id,
       position: { x: 0, y: 0 }, // Position will be calculated based on order
       userAssignedName: activity.name,
       // Initialize with a copy of the template's elements for this specific node
       localSidePanelElements: [...activity.sidePanelElements],
-      metadata: { branch: insertBranch }
+      metadata: isCondition
+        ? { branch: insertBranch, branches: ['Branch 1'] }
+        : { branch: insertBranch }
     };
 
     // Get nodes for the specific branch
@@ -568,6 +580,9 @@ export function WorkflowBuilder() {
             node
           );
 
+          // Check if this is the last plus button in the branch
+          const isLast = index === branchNodes.length - 1;
+
           return (
             <React.Fragment key={node.id}>
               {/* Plus button above (except first node, and not for first node after a Condition node) */}
@@ -575,9 +590,10 @@ export function WorkflowBuilder() {
                 <div className="flex justify-center mb-0">
                   <button
                     onClick={e => handleAddActivity(index, branch, e)}
-                    className="w-6 h-6 bg-gray-400 text-white rounded-lg flex items-center justify-center hover:bg-gray-500 transition-colors"
+                    className="w-4 h-4 flex items-center justify-center rounded-full bg-[#AEB5C2] text-[#AEB5C2] transition-all duration-200 group hover:w-6 hover:h-6 hover:bg-gray-400 hover:text-white hover:rounded-lg"
+                    style={{ minWidth: 12, minHeight: 12 }}
                   >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-3 h-3 group-hover:w-4 group-hover:h-4 transition-all duration-200" />
                   </button>
                 </div>
               )}
@@ -621,7 +637,8 @@ export function WorkflowBuilder() {
                         </button>
                         <div className="flex items-center space-x-3">
                           <div className="w-8 h-8 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ backgroundColor: iconColor.bg }}>
-                            <IconComponent className="w-4 h-4" style={{ color: iconColor.iconColor }} />
+                            {/* Rotate icon 90deg for Condition node only */}
+                            <IconComponent className="w-4 h-4" style={{ color: iconColor.iconColor, transform: 'rotate(90deg)' }} />
                           </div>
                           <h3 className="font-medium text-[#353B46] text-[14px] mb-0">{node.userAssignedName || template.name}</h3>
                         </div>
@@ -721,12 +738,22 @@ export function WorkflowBuilder() {
               {/* Plus button after (except for Condition node) */}
               {!isCondition && (
                 <div className="flex justify-center mb-0">
-                  <button
-                    onClick={e => handleAddActivity(index + 1, branch, e)}
-                    className="w-6 h-6 bg-gray-400 text-white rounded-lg flex items-center justify-center hover:bg-gray-500 transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
+                  {isLast ? (
+                    <button
+                      onClick={e => handleAddActivity(index + 1, branch, e)}
+                      className="w-6 h-6 bg-gray-400 text-white rounded-lg flex items-center justify-center hover:bg-gray-500 transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={e => handleAddActivity(index + 1, branch, e)}
+                      className="w-4 h-4 flex items-center justify-center rounded-full bg-[#AEB5C2] text-[#AEB5C2] transition-all duration-200 group hover:w-6 hover:h-6 hover:bg-gray-400 hover:text-white hover:rounded-lg"
+                      style={{ minWidth: 12, minHeight: 12 }}
+                    >
+                      <Plus className="w-3 h-3 group-hover:w-4 group-hover:h-4 transition-all duration-200" />
+                    </button>
+                  )}
                 </div>
               )}
             </React.Fragment>
@@ -749,6 +776,87 @@ export function WorkflowBuilder() {
       }
     });
   });
+
+  const handleDeleteWorkflow = async () => {
+    if (!workflow) return;
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteWorkflow = async () => {
+    if (!workflow) return;
+    await deleteWorkflow(workflow.id);
+    setShowDeleteModal(false);
+    navigate('/');
+  };
+
+  const cancelDeleteWorkflow = () => {
+    setShowDeleteModal(false);
+  };
+
+  // Utility to recursively collect all node IDs in a branch and its sub-branches for deletion
+  function collectAllNodeIdsToDelete(nodes: WorkflowNode[], branchNames: string[], getActivityTemplate: (id: string) => ActivityTemplate | undefined): Set<string> {
+    const idsToDelete = new Set<string>();
+    function collect(branch: string) {
+      // Find all nodes in this branch
+      const branchNodes = nodes.filter(n => (n.metadata?.branch || 'main') === branch);
+      for (const node of branchNodes) {
+        idsToDelete.add(node.id);
+        // If this is a condition node, recursively collect for its sub-branches
+        const template = getActivityTemplate(node.activityTemplateId);
+        if (template && (template.name.toLowerCase().includes('condition') || (template.description && template.description.toLowerCase().includes('condition')))) {
+          const subBranches: string[] = node.metadata?.branches || [];
+          for (const subBranch of subBranches) {
+            collect(subBranch);
+          }
+        }
+      }
+    }
+    for (const branch of branchNames) {
+      collect(branch);
+    }
+    return idsToDelete;
+  }
+
+  // Utility to repair branch assignments for all nodes after branch operations
+  function repairBranchAssignments(nodes: WorkflowNode[], getActivityTemplate: (id: string) => ActivityTemplate | undefined): WorkflowNode[] {
+    // Map from node id to node for fast lookup
+    const nodeMap = new Map(nodes.map(n => [n.id, n]));
+    // Helper to recursively assign branch to all descendants
+    function assignBranch(startNodeId: string, branch: string) {
+      let queue = [startNodeId];
+      while (queue.length > 0) {
+        const currentId = queue.shift();
+        if (!currentId) continue;
+        const node = nodeMap.get(currentId);
+        if (!node) continue;
+        // Only update if not a condition node (they own their own branches)
+        const template = getActivityTemplate(node.activityTemplateId);
+        const isCondition = template && (template.name.toLowerCase().includes('condition') || (template.description && template.description.toLowerCase().includes('condition')));
+        if (!isCondition) {
+          node.metadata = { ...node.metadata, branch };
+        }
+        // Find direct children (nodes whose metadata.branch === branch and come after this node)
+        // In this flat model, we can't walk children by tree, so we rely on branch assignment only
+        // (If you have explicit parent/child links, use them here)
+      }
+    }
+    // For each condition node, assign branches to all descendants
+    nodes.forEach(node => {
+      const template = getActivityTemplate(node.activityTemplateId);
+      if (template && (template.name.toLowerCase().includes('condition') || (template.description && template.description.toLowerCase().includes('condition')))) {
+        const branches: string[] = node.metadata?.branches || [];
+        branches.forEach((branch: string) => {
+          // Find all nodes in this branch and set their branch
+          nodes.forEach(n => {
+            if (n.metadata?.branch === branch) {
+              n.metadata = { ...n.metadata, branch };
+            }
+          });
+        });
+      }
+    });
+    return nodes;
+  }
 
   return (
     <div className="flex h-screen bg-white">
@@ -788,7 +896,7 @@ export function WorkflowBuilder() {
               )}
             </div>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-3 relative">
             <button
               onClick={() => setPreviewMode(!previewMode)}
               className={`flex items-center space-x-2 px-4 py-2 rounded-xl transition-colors ${
@@ -815,6 +923,27 @@ export function WorkflowBuilder() {
                 </>
               )}
             </button>
+            {/* More menu button */}
+            <div className="relative">
+              <button
+                onClick={() => setShowMenu(v => !v)}
+                className={`flex items-center space-x-2 px-2 py-2 rounded-xl transition-colors bg-white text-[#637085] border border-[#8C95A8] hover:bg-slate-200`}
+                title="More actions"
+              >
+                <MoreVertical className="w-5 h-5" />
+              </button>
+              {showMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                  <button
+                    onClick={handleDeleteWorkflow}
+                    className="w-full text-left px-4 py-2 text-slate-600 hover:bg-red-50 rounded-t-lg flex items-center gap-2"
+                  >
+                    <Trash2 className="w-4 h-4 text-xs text-red-500" />
+                    <span>Delete workflow</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -979,7 +1108,64 @@ export function WorkflowBuilder() {
           <div className="flex-1 overflow-y-auto p-4">
             <ActivityNodeConfiguration
               node={selectedNode}
-              onUpdate={(updates) => handleNodeUpdate(selectedNode.id, updates)}
+              onUpdate={(updates) => {
+                // Special handling for branch deletion: remove nodes in deleted branches
+                if (updates.metadata && updates.metadata.__deleteNodesInBranches) {
+                  const deletedBranches = updates.metadata.__deleteNodesInBranches;
+                  console.log('WorkflowBuilder: Received branch deletion signal for branches', deletedBranches);
+                  // Recursively collect all node IDs to be deleted
+                  const idsToDelete = collectAllNodeIdsToDelete(workflow.nodes, deletedBranches, getActivityTemplate);
+                  console.log('WorkflowBuilder: Deleting node IDs', Array.from(idsToDelete));
+                  // Repair branch assignments before filtering (optional, but safe)
+                  const repairedNodes = repairBranchAssignments([...workflow.nodes], getActivityTemplate);
+                  const filteredNodes = repairedNodes.filter(n => !idsToDelete.has(n.id));
+                  const cleanedMetadata = { ...updates.metadata };
+                  delete cleanedMetadata.__deleteNodesInBranches;
+                  const updatedWorkflow = {
+                    ...workflow,
+                    nodes: filteredNodes
+                  };
+                  dispatch({ type: 'UPDATE_WORKFLOW', payload: updatedWorkflow });
+                  updateWorkflow(updatedWorkflow);
+                  console.log('WorkflowBuilder: Updated workflow nodes', updatedWorkflow.nodes.map(n => n.id));
+                  // If the current node is being deleted, do not update it further
+                  if (idsToDelete.has(selectedNode.id)) {
+                    dispatch({ type: 'SELECT_NODE', payload: null });
+                    return;
+                  }
+                  // Always update the selected node to the latest version from the workflow
+                  let updatedNode = updatedWorkflow.nodes.find(n => n.id === selectedNode.id);
+                  if (updatedNode) {
+                    // If this is a condition node, prune its metadata.branches to only include branches that still exist
+                    const template = getActivityTemplate(updatedNode.activityTemplateId);
+                    if (
+                      template &&
+                      (template.name.toLowerCase().includes('condition') ||
+                        (template.description && template.description.toLowerCase().includes('condition')))
+                    ) {
+                      const allBranchNames = new Set(
+                        updatedWorkflow.nodes.map(n => n.metadata?.branch || 'main')
+                      );
+                      if (updatedNode.metadata && Array.isArray(updatedNode.metadata.branches)) {
+                        updatedNode = {
+                          ...updatedNode,
+                          metadata: {
+                            ...updatedNode.metadata,
+                            branches: updatedNode.metadata.branches.filter((b: string) =>
+                              allBranchNames.has(b)
+                            )
+                          }
+                        };
+                      }
+                    }
+                    dispatch({ type: 'SELECT_NODE', payload: updatedNode });
+                  }
+                  // Continue with normal update for the condition node itself
+                  handleNodeUpdate(selectedNode.id, { ...updates, metadata: cleanedMetadata });
+                  return;
+                }
+                handleNodeUpdate(selectedNode.id, updates);
+              }}
               previewMode={previewMode}
               isEditingElements={isEditingElements}
               workflow={workflow}
@@ -998,6 +1184,57 @@ export function WorkflowBuilder() {
           setSearchTerm={setSearchTerm}
         />,
         document.body
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30"
+          onClick={cancelDeleteWorkflow}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-0 flex flex-col"
+            style={{ minWidth: 380 }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 pt-5 pb-4">
+              <h2 className="text-lg font-semibold text-[#3A3F4B]">Delete workflow</h2>
+              <button
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-full focus:outline-none"
+                onClick={cancelDeleteWorkflow}
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {/* Divider */}
+            <div className="border-t border-slate-200 w-full" />
+            {/* Description */}
+            <div className="px-6 py-8 text-[#3A3F4B] text-md font-normal">
+              Are you sure you want to delete this workflow? The action can not be reverted.
+            </div>
+            {/* Divider */}
+            <div className="border-t border-slate-200 w-full" />
+            {/* Buttons */}
+            <div className="flex justify-end space-x-4 px-6 py-4">
+              <button
+                className="h-10 px-4 rounded-xl border border-[#8C95A8] text-[#2927B2] text-sm font-medium bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#4D3EE0]"
+                style={{ fontSize: 14 }}
+                onClick={cancelDeleteWorkflow}
+              >
+                Cancel
+              </button>
+              <button
+                className="h-10 px-4 rounded-xl bg-[#C40F24] text-white text-sm font-medium hover:bg-[#B71C1C] focus:outline-none focus:ring-2 focus:ring-[#D32F2F]"
+                style={{ fontSize: 14 }}
+                onClick={confirmDeleteWorkflow}
+              >
+                Delete workflow
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -1207,140 +1444,15 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
           <DynamicForm
             elements={currentElements}
             values={node.metadata || {}}
-            onChange={(values) => onUpdate({ metadata: values })}
+            onChange={(values) => {
+              // Intercept branch deletion signal and pass it up
+              if (values.__deleteNodesInBranches) {
+                onUpdate({ metadata: values });
+              } else {
+                onUpdate({ metadata: values });
+              }
+            }}
           />
-
-          {/* Condition-specific branch configuration */}
-          {isConditionNode && (
-            <div className="border-t pt-4 mt-6">
-              <h4 className="text-sm font-medium text-slate-700 mb-4">Branch Configuration</h4>
-              
-              {/* Existing branches */}
-              {(node.metadata?.branches || ['Branch 1', 'Branch 2']).map((branchName: string, branchIndex: number) => (
-                <div key={branchName} className="mb-6 p-4 bg-slate-50 rounded-lg flex flex-col rounded-lg">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center space-x-2">
-                      {editingBranchIndex === branchIndex ? (
-                        <input
-                          type="text"
-                          value={editingBranchName}
-                          autoFocus
-                          onChange={e => setEditingBranchName(e.target.value)}
-                          onBlur={() => {
-                            if (editingBranchName.trim()) {
-                              const newBranches = [...(node.metadata?.branches || [])];
-                              newBranches[branchIndex] = editingBranchName.trim();
-                              onUpdate({ metadata: { ...node.metadata, branches: newBranches } });
-                            }
-                            setEditingBranchIndex(null);
-                            setEditingBranchName('');
-                          }}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') {
-                              if (editingBranchName.trim()) {
-                                const newBranches = [...(node.metadata?.branches || [])];
-                                newBranches[branchIndex] = editingBranchName.trim();
-                                onUpdate({ metadata: { ...node.metadata, branches: newBranches } });
-                              }
-                              setEditingBranchIndex(null);
-                              setEditingBranchName('');
-                            } else if (e.key === 'Escape') {
-                              setEditingBranchIndex(null);
-                              setEditingBranchName('');
-                            }
-                          }}
-                          className="px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          style={{ minWidth: 80 }}
-                        />
-                      ) : (
-                        <button
-                          className="px-3 py-1 bg-teal-100 text-teal-800 text-xs font-medium rounded-full hover:bg-teal-200 transition-colors"
-                          onClick={() => {
-                            setEditingBranchIndex(branchIndex);
-                            setEditingBranchName(branchName);
-                          }}
-                        >
-                          {branchName}
-                        </button>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => {
-                        const currentBranches = node.metadata?.branches || ['Branch 1', 'Branch 2'];
-                        if (currentBranches.length > 2) {
-                          const newBranches = currentBranches.filter((_: string, i: number) => i !== branchIndex);
-                          onUpdate({ metadata: { ...node.metadata, branches: newBranches } });
-                        }
-                      }}
-                      className={`ml-2 p-1 rounded hover:bg-red-100 ${((node.metadata?.branches || ['Branch 1', 'Branch 2']).length <= 2) ? 'opacity-50 cursor-not-allowed' : 'text-red-600 hover:text-red-700'}`}
-                      disabled={(node.metadata?.branches || ['Branch 1', 'Branch 2']).length <= 2}
-                      title={((node.metadata?.branches || ['Branch 1', 'Branch 2']).length <= 2) ? 'At least two branches required' : 'Delete branch'}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                  {/* Condition lines for this branch */}
-                  <div className="mb-3">
-                    <label className="block text-xs font-medium text-slate-600 mb-2">If</label>
-                    {(node.metadata?.branchConditions?.[branchName] || [{ field: '', operator: 'is', value: '' }]).map((condition: any, conditionIndex: number) => (
-                      <div key={conditionIndex} className="flex space-x-2 mb-2">
-                        <select
-                          value={condition.field || ''}
-                          onChange={(e) => updateConditionLine(branchIndex, conditionIndex, 'field', e.target.value)}
-                          className="flex-1 px-3 py-2 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="">Select field...</option>
-                          <option value="Location">Location</option>
-                          <option value="Status">Status</option>
-                          <option value="Priority">Priority</option>
-                        </select>
-                        <select
-                          value={condition.operator || 'is'}
-                          onChange={(e) => updateConditionLine(branchIndex, conditionIndex, 'operator', e.target.value)}
-                          className="px-3 py-2 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="is">is</option>
-                          <option value="is not">is not</option>
-                          <option value="contains">contains</option>
-                        </select>
-                        <select
-                          value={condition.value || ''}
-                          onChange={(e) => updateConditionLine(branchIndex, conditionIndex, 'value', e.target.value)}
-                          className="flex-1 px-3 py-2 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="">Select value...</option>
-                          <option value="Bucharest">Bucharest</option>
-                          <option value="Oslo">Oslo</option>
-                          <option value="London">London</option>
-                          <option value="Paris">Paris</option>
-                        </select>
-                      </div>
-                    ))}
-                    <button
-                      onClick={() => addConditionLine(branchIndex)}
-                      className="flex items-center space-x-1 text-blue-600 hover:text-blue-700 text-sm"
-                    >
-                      <Plus className="w-3 h-3" />
-                      <span>Add Line</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {/* Add Branch Button */}
-              <button
-                onClick={() => {
-                  const currentBranches = node.metadata?.branches || ['Branch 1', 'Branch 2'];
-                  const nextNum = currentBranches.length + 1;
-                  const newBranches = [...currentBranches, `Branch ${nextNum}`];
-                  onUpdate({ metadata: { ...node.metadata, branches: newBranches } });
-                }}
-                className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 text-sm mt-2"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Branch</span>
-              </button>
-            </div>
-          )}
         </div>
       )}
     </div>
@@ -1932,30 +2044,40 @@ function ActivityDropdown({ position, activities, onSelect, onClose, searchTerm,
           {Object.entries(filtered).length === 0 && (
             <div className="text-xs text-slate-500 px-2 py-6 text-center">No activities found</div>
           )}
-          {Object.entries(filtered).map(([category, acts]) => (
-            <div key={category} className="mb-2">
-              <div className="text-[10px] font-semibold text-[#8C95A8] uppercase tracking-wider px-2 py-1 bg-[#F5F7FA] rounded mb-1">{category}</div>
-              <div className="flex flex-col gap-1">
-                {(acts as ActivityTemplate[]).map(activity => {
-                  const IconComponent = AVAILABLE_ICONS.find(i => i.name === activity.icon)?.component || Settings;
-                  const iconColor = ICON_COLORS.find(c => c.value === (activity.iconColor || 'purple')) || ICON_COLORS[0];
-                  return (
-                    <button
-                      key={activity.id}
-                      onClick={() => { onSelect(activity); onClose(); }}
-                      className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#F5F7FA] transition-all text-left"
-                      style={{ minHeight: 36 }}
-                    >
-                      <div className="w-6 h-6 rounded-[8px] flex items-center justify-center" style={{ backgroundColor: iconColor.bg }}>
-                        <IconComponent className="w-4 h-4" style={{ color: iconColor.iconColor }} />
-                      </div>
-                      <span className="font-medium text-[#353B46] text-xs">{activity.name}</span>
-                    </button>
-                  );
-                })}
+          {Object.entries(filtered)
+            .sort(([a,], [b,]) => {
+              const aLower = a.toLowerCase();
+              const bLower = b.toLowerCase();
+              if (aLower === 'workflow') return -1;
+              if (bLower === 'workflow') return 1;
+              return 0;
+            })
+            .map(([category, acts]) => (
+              <div key={category} className="mb-1">
+                <div className="text-[10px] font-semibold text-[#8C95A8] uppercase tracking-wider px-3 py-1 bg-[#F5F7FA] rounded mb-1">{category}</div>
+                <div className="flex flex-col gap-0">
+                  {(acts as ActivityTemplate[]).map(activity => {
+                    const IconComponent = AVAILABLE_ICONS.find(i => i.name === activity.icon)?.component || Settings;
+                    const iconColor = ICON_COLORS.find(c => c.value === (activity.iconColor || 'purple')) || ICON_COLORS[0];
+                    // Check if this is the Condition activity
+                    const isCondition = activity.name.toLowerCase() === 'condition' || activity.icon === 'Split';
+                    return (
+                      <button
+                        key={activity.id}
+                        onClick={() => { onSelect(activity); onClose(); }}
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[#F5F7FA] transition-all text-left"
+                        style={{ minHeight: 36 }}
+                      >
+                        <div className="w-6 h-6 rounded-[8px] flex items-center justify-center" style={{ backgroundColor: iconColor.bg }}>
+                          <IconComponent className="w-4 h-4" style={{ color: iconColor.iconColor, ...(isCondition ? { transform: 'rotate(90deg)' } : {}) }} />
+                        </div>
+                        <span className="font-medium text-[#353B46] text-xs">{activity.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
         </div>
       </div>
     </div>
