@@ -1098,7 +1098,22 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
       <div className="flex items-center justify-between mb-3">
         <select
           value={element.type}
-          onChange={(e) => onUpdate({ type: e.target.value as UIElement['type'] })}
+          onChange={(e) => {
+            const newType = e.target.value as UIElement['type'];
+            if (newType === 'events-module' && (!element.events || element.events.length === 0)) {
+              onUpdate({
+                type: newType,
+                events: [
+                  { title: 'The Dream Career Conference', subtitle: 'High Volume Hiring', tag: 'Upcoming' },
+                  { title: 'Technical Professionals Meetup', subtitle: 'High Volume Hiring', tag: 'Upcoming' },
+                  { title: 'How Phenom keeps employees happy', subtitle: 'High Volume Hiring', tag: 'Upcoming' }
+                ],
+                label: ''
+              });
+            } else {
+              onUpdate({ type: newType });
+            }
+          }}
           disabled={disabled}
           className="px-3 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
         >
@@ -1116,6 +1131,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
           <option value="date">Date Picker</option>
           <option value="screening-questions">Screening Questions Module</option>
           <option value="conditions-module">Conditions Module</option>
+          <option value="events-module">Events Module</option>
         </select>
         <div className="flex items-center space-x-1">
           <button
@@ -1155,7 +1171,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
               placeholder="Enter text content..."
             />
           </div>
-        ) : element.type !== 'section-divider' && element.type !== 'screening-questions' && element.type !== 'conditions-module' && (
+        ) : element.type !== 'section-divider' && element.type !== 'screening-questions' && element.type !== 'conditions-module' && element.type !== 'events-module' && (
           <div className={element.type === 'toggle' ? 'col-span-2' : ''}>
             <label className="block text-xs font-medium text-slate-600 mb-1">Label</label>
             <input
@@ -1167,7 +1183,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
             />
           </div>
         )}
-        {element.type !== 'section-divider' && element.type !== 'text-block' && element.type !== 'number' && element.type !== 'date' && element.type !== 'radio' && element.type !== 'toggle' && element.type !== 'screening-questions' && element.type !== 'conditions-module' && (
+        {element.type !== 'section-divider' && element.type !== 'text-block' && element.type !== 'number' && element.type !== 'date' && element.type !== 'radio' && element.type !== 'toggle' && element.type !== 'screening-questions' && element.type !== 'conditions-module' && element.type !== 'events-module' && (
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Placeholder</label>
             <input
@@ -1803,6 +1819,73 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
             placeholder="Section title (optional)"
           />
           <div className="text-xs text-slate-500 mt-1">Leave empty if you just want a divider line</div>
+        </div>
+      )}
+      {/* Events Module Editor */}
+      {element.type === 'events-module' && (
+        <div className="mb-3">
+          <label className="block text-xs font-medium text-slate-600 mb-1">Events</label>
+          <div className="space-y-3">
+            {(element.events || []).map((event, idx) => (
+              <div key={idx} className="border rounded-lg p-3 bg-slate-50 flex flex-col gap-2 relative">
+                <button
+                  type="button"
+                  className="absolute top-2 right-2 text-slate-400 hover:text-red-500 p-1"
+                  onClick={() => {
+                    const newEvents = [...(element.events || [])];
+                    newEvents.splice(idx, 1);
+                    onUpdate({ events: newEvents });
+                  }}
+                  tabIndex={-1}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                <input
+                  type="text"
+                  className="w-full px-2 py-1 border border-[#8C95A8] rounded text-sm mb-1"
+                  placeholder="Event title"
+                  value={event.title}
+                  onChange={e => {
+                    const newEvents = [...(element.events || [])];
+                    newEvents[idx] = { ...event, title: e.target.value };
+                    onUpdate({ events: newEvents });
+                  }}
+                />
+                <input
+                  type="text"
+                  className="w-full px-2 py-1 border border-[#8C95A8] rounded text-sm mb-1"
+                  placeholder="Event subtitle"
+                  value={event.subtitle}
+                  onChange={e => {
+                    const newEvents = [...(element.events || [])];
+                    newEvents[idx] = { ...event, subtitle: e.target.value };
+                    onUpdate({ events: newEvents });
+                  }}
+                />
+                <input
+                  type="text"
+                  className="w-full px-2 py-1 border border-[#8C95A8] rounded text-sm"
+                  placeholder="Event tag"
+                  value={event.tag}
+                  onChange={e => {
+                    const newEvents = [...(element.events || [])];
+                    newEvents[idx] = { ...event, tag: e.target.value };
+                    onUpdate({ events: newEvents });
+                  }}
+                />
+              </div>
+            ))}
+            <button
+              type="button"
+              className="mt-2 px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+              onClick={() => {
+                const newEvents = [...(element.events || []), { title: '', subtitle: '', tag: '' }];
+                onUpdate({ events: newEvents });
+              }}
+            >
+              + Add Event
+            </button>
+          </div>
         </div>
       )}
     </div>

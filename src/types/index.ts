@@ -3,9 +3,15 @@ export interface ConditionalFollowUp {
   elements: UIElement[];
 }
 
+export interface EventCard {
+  title: string;
+  subtitle: string;
+  tag: string;
+}
+
 export interface UIElement {
   id: string;
-  type: 'text' | 'dropdown' | 'radio' | 'checkbox' | 'button' | 'section-divider' | 'text-block' | 'toggle' | 'file-upload' | 'textarea' | 'number' | 'date' | 'screening-questions' | 'conditions-module';
+  type: 'text' | 'dropdown' | 'radio' | 'checkbox' | 'button' | 'section-divider' | 'text-block' | 'toggle' | 'file-upload' | 'textarea' | 'number' | 'date' | 'screening-questions' | 'conditions-module' | 'events-module';
   label: string;
   options?: string[];
   required?: boolean;
@@ -32,6 +38,7 @@ export interface UIElement {
   hasTitle?: boolean;
   title?: string;
   addedElements?: UIElement[];
+  events?: EventCard[]; // For events-module only
 }
 
 export interface ActivityTemplate {

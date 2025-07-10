@@ -393,6 +393,25 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
             </div>
           );
         }
+        if (element.type === 'events-module') {
+          const events = element.events || [];
+          return (
+            <div key={element.id} className="md:col-span-2">
+              <div className="mb-3 text-sm font-medium text-slate-700">{events.length} events found</div>
+              <div className="space-y-3">
+                {events.map((event, idx) => (
+                  <div key={idx} className="border rounded-xl p-3 bg-white/80 flex flex-col gap-2 border-slate-200">
+                    <div className="font-medium text-[#464F5E] text-sm">{event.title}</div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[#464F5E] text-[13px]">{event.subtitle}</span>
+                      <span className="bg-[#EAE8FB] text-[#2927B2] text-[11px] font-normal px-2 py-0.5 rounded-md ml-0">{event.tag}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        }
         // Minimal working radio rendering block (only one return per element)
         if (element.type === 'radio') {
           // Render radio group with conditional follow-ups and horizontal layout
@@ -459,7 +478,7 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
                       if (checked) {
                         handleValueChange(element.id, [...prev, option]);
                       } else {
-                        handleValueChange(element.id, prev.filter((v) => v !== option));
+                        handleValueChange(element.id, prev.filter((v: any) => v !== option));
                       }
                     }}
                     className="text-[#4D3EE0] focus:ring-0"
@@ -542,286 +561,57 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
         if (element.type === 'button') {
           return (
             <div key={element.id} className={indentClass}>
-              {/* Dynamic elements added by this button (if any) will be rendered after the optional title, inside the button block below */}
-              {element.type === 'toggle' && (
-                <div className="flex items-center justify-between w-full gap-2 md:col-span-2">
-                  <span className="text-sm text-slate-700">{element.label}</span>
+              <div className="flex items-center justify-between">
+                {element.type !== 'button' && (
+                  <label className="block text-[13px] font-medium text-slate-700 mb-2">
+                    {element.label}
+                  </label>
+                )}
+                {Object.values(dynamicElements).flat().some(de => de.id === element.id) && (
                   <button
                     type="button"
-                    aria-pressed={!!formValues[element.id]}
-                    onClick={() => handleValueChange(element.id, !formValues[element.id])}
-                    className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors focus:outline-none ${
-                      formValues[element.id] ? 'bg-[#2927B2]' : 'bg-[#AEB5C2]'
-                    }`}
+                    onClick={() => removeDynamicElement(element.id)}
+                    className="text-red-600 hover:text-red-700 text-xs"
                   >
-                    <span
-                      className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                        formValues[element.id] ? 'translate-x-4' : 'translate-x-1'
-                      }`}
-                    />
+                    <X className="w-4 h-4" />
                   </button>
+                )}
+              </div>
+              {/* Only render button-specific UI here */}
+              {element.hasTitle && element.title && (
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  {element.title}
+                </label>
+              )}
+              {/* Render any dynamic elements this button has added AFTER the title and BEFORE the button itself */}
+              {dynamicElements[element.id] && dynamicElements[element.id].length > 0 && (
+                <div className="mb-4">
+                  <DynamicForm
+                    elements={dynamicElements[element.id]}
+                    values={formValues}
+                    onChange={onChange}
+                    level={level + 1}
+                    originalElements={baseElements}
+                  />
                 </div>
               )}
-              {element.type !== 'toggle' && (
-                <>
-                  <div className="flex items-center justify-between">
-                    {element.type !== 'button' && (
-                      <label className="block text-[13px] font-medium text-slate-700 mb-2">
-                        {element.label}
-                      </label>
-                    )}
-                    {Object.values(dynamicElements).flat().some(de => de.id === element.id) && (
-                      <button
-                        type="button"
-                        onClick={() => removeDynamicElement(element.id)}
-                        className="text-red-600 hover:text-red-700 text-xs"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                  
-                  {element.type === 'text' && (
-                    <input
-                      type="text"
-                      value={formValues[element.id] !== undefined ? formValues[element.id] : (typeof element.defaultValue === 'string' ? element.defaultValue : '')}
-                      onChange={(e) => handleValueChange(element.id, e.target.value)}
-                      placeholder={element.placeholder}
-                      required={element.required}
-                      readOnly={!!element.disabled}
-                      className={`w-full px-3 py-2 rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent text-[13px] ${
-                        element.disabled ? 'bg-[#F4F6FA] border-0' : 'border border-[#8C95A8]'
-                      }`}
-                    />
-                  )}
-
-                  {element.type === 'textarea' && (
-                    <textarea
-                      value={formValues[element.id] !== undefined ? formValues[element.id] : (typeof element.defaultValue === 'string' ? element.defaultValue : '')}
-                      onChange={(e) => handleValueChange(element.id, e.target.value)}
-                      placeholder={element.placeholder}
-                      required={element.required}
-                      rows={3}
-                      className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent text-[13px] resize-vertical"
-                    />
-                  )}
-
-                  {element.type === 'dropdown' && !element.multiselect && (
-                    <select
-                      value={formValues[element.id] ?? ''}
-                      onChange={(e) => handleValueChange(element.id, e.target.value)}
-                      required={element.required}
-                      className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent text-[13px]"
-                    >
-                      <option value="">{element.placeholder || 'Select an option'}</option>
-                      {element.options?.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-
-                  {element.type === 'toggle' ? (
-                    <div className="flex items-center justify-between w-full gap-2">
-                      <span className="text-sm text-slate-700">{element.label}</span>
-                      <button
-                        type="button"
-                        aria-pressed={!!formValues[element.id]}
-                        onClick={() => handleValueChange(element.id, !formValues[element.id])}
-                        className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors focus:outline-none ${
-                          formValues[element.id] ? 'bg-[#2927B2]' : 'bg-[#AEB5C2]'
-                        }`}
-                      >
-                        <span
-                          className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                            formValues[element.id] ? 'translate-x-4' : 'translate-x-1'
-                          }`}
-                        />
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      {element.type === 'file-upload' && (
-                        (() => {
-                          const fileValue = formValues[element.id];
-                          // If a file is uploaded, show preview
-                          if (fileValue && typeof fileValue === 'object' && fileValue instanceof File) {
-                            const isImage = fileValue.type.startsWith('image/');
-                            const fileUrl = isImage ? URL.createObjectURL(fileValue) : null;
-                            return (
-                              <div className="flex flex-col items-center justify-center border-2 border-dashed border-[#C3C7D1] rounded-2xl px-6 py-10 text-center min-h-[180px] relative">
-                                {isImage ? (
-                                  <img src={fileUrl!} alt={fileValue.name} className="max-h-96 max-w-full rounded-xl object-contain mb-4" style={{background: '#F4F5FA'}} onLoad={() => URL.revokeObjectURL(fileUrl!)} />
-                                ) : (
-                                  <div className="flex flex-col items-center justify-center mb-4">
-                                    <Upload className="w-12 h-12 text-[#AEB5C2] mb-2" />
-                                  </div>
-                                )}
-                                <div className="text-sm text-[#464F5E] font-medium mb-2">
-                                  {isImage ? `Image: ${fileValue.name}` : `File: ${fileValue.name}`}
-                                </div>
-                                <div className="flex gap-4 mt-2">
-                                  {/* Re-upload button */}
-                                  <label htmlFor={`file-${element.id}`} className="cursor-pointer text-[#2927B2] hover:text-[#1C1876]">
-                                    <span className="sr-only">Re-upload</span>
-                                    <RotateCcw className="w-5 h-5" />
-                                  </label>
-                                  {/* Delete button */}
-                                  <button type="button" className="text-[#C40F24] hover:text-[#B71C1C]" onClick={() => handleValueChange(element.id, undefined)}>
-                                    <span className="sr-only">Delete</span>
-                                    <Trash2 className="w-5 h-5" />
-                                  </button>
-                                </div>
-                                <input
-                                  type="file"
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                      handleValueChange(element.id, file);
-                                    }
-                                  }}
-                                  required={element.required}
-                                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                  id={`file-${element.id}`}
-                                  tabIndex={-1}
-                                  style={{display: 'none'}}
-                                />
-                              </div>
-                            );
-                          }
-                          // Otherwise, show uploader
-                          return (
-                            <div
-                              className="relative flex flex-col items-center justify-center border-2 border-dashed border-[#C3C7D1] rounded-2xl px-6 py-10 text-center min-h-[180px] cursor-pointer transition-colors hover:border-[#AEB5C2] focus-within:border-[#2927B2]"
-                              tabIndex={0}
-                            >
-                              <input
-                                type="file"
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    handleValueChange(element.id, file);
-                                  }
-                                }}
-                                required={element.required}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                id={`file-${element.id}`}
-                                tabIndex={-1}
-                              />
-                              <div className="flex flex-col items-center justify-center pointer-events-none select-none">
-                                <div className="w-6 h-6 rounded-full bg-[#F4F5FA] flex items-center justify-center mb-6">
-                                  <Upload className="w-4 h-4 text-[#AEB5C2]" />
-                                </div>
-                                <div className="mb-2 text-sm text-[#464F5E] font-medium">
-                                  Drop file here or{' '}
-                                  <label
-                                    htmlFor={`file-${element.id}`}
-                                    className="text-[#2927B2] font-bold underline cursor-pointer hover:text-[#1C1876] focus:text-[#1C1876] pointer-events-auto"
-                                    tabIndex={0}
-                                  >
-                                    select a file to upload
-                                  </label>
-                                </div>
-                                <div className="text-xs text-[#8C95A8] mt-1 font-normal">
-                                  All <span className="font-medium">.png, .jpg, .mov, .mp4</span> types are supported, up to 10MB
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })()
-                      )}
-
-                      {element.type === 'number' && (
-                        <input
-                          type="number"
-                          value={formValues[element.id] ?? ''}
-                          onChange={(e) => handleValueChange(element.id, e.target.value === '' ? '' : Number(e.target.value))}
-                          placeholder={element.placeholder}
-                          required={element.required}
-                          min={element.min}
-                          max={element.max}
-                          step={element.step}
-                          className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent text-[13px]"
-                        />
-                      )}
-
-                      {element.type === 'date' && (
-                        <input
-                          type="date"
-                          value={formValues[element.id] || ''}
-                          onChange={(e) => handleValueChange(element.id, e.target.value)}
-                          placeholder={element.placeholder}
-                          required={element.required}
-                          min={typeof element.min === 'string' ? element.min : undefined}
-                          max={typeof element.max === 'string' ? element.max : undefined}
-                          step={element.step}
-                          className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent text-[13px]"
-                        />
-                      )}
-
-                      {/* Render conditional follow-ups if any */}
-                      {(() => {
-                        const conditionalElements = getConditionalFollowUps(element);
-                        if (conditionalElements.length > 0) {
-                          return (
-                            <div className="mt-4 ">
-                              <DynamicForm
-                                elements={conditionalElements}
-                                values={formValues}
-                                onChange={onChange}
-                                level={level + 1}
-                                originalElements={baseElements}
-                              />
-                            </div>
-                          );
-                        }
-                        return null;
-                      })()}
-                    </>
-                  )}
-
-                  {element.type === 'button' && (
-                    <>
-                      {element.hasTitle && element.title && (
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                          {element.title}
-                        </label>
-                      )}
-
-                      {/* Render any dynamic elements this button has added AFTER the title and BEFORE the button itself */}
-                      {dynamicElements[element.id] && dynamicElements[element.id].length > 0 && (
-                        <div className="mb-4">
-                          <DynamicForm
-                            elements={dynamicElements[element.id]}
-                            values={formValues}
-                            onChange={onChange}
-                            level={level + 1}
-                            originalElements={baseElements}
-                          />
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handleButtonClick(element)}
-                        className="inline-flex items-center text-[#2927B2] font-medium text-sm hover:text-[#1C1876] transition-colors"
-                      >
-                        {element.hasIcon && element.icon && element.iconPosition !== 'right' && (
-                          <span className="mr-2">
-                            {React.createElement(getIconComponent(element.icon), { className: "w-4 h-4" })}
-                          </span>
-                        )}
-                        {element.label}
-                        {element.hasIcon && element.icon && element.iconPosition === 'right' && (
-                          <span className="ml-2">
-                            {React.createElement(getIconComponent(element.icon), { className: "w-4 h-4" })}
-                          </span>
-                        )}
-                      </button>
-                    </>
-                  )}
-                </>
-              )}
+              <button
+                type="button"
+                onClick={() => handleButtonClick(element)}
+                className="inline-flex items-center text-[#2927B2] font-medium text-sm hover:text-[#1C1876] transition-colors"
+              >
+                {element.hasIcon && element.icon && element.iconPosition !== 'right' && (
+                  <span className="mr-2">
+                    {React.createElement(getIconComponent(element.icon), { className: "w-4 h-4" })}
+                  </span>
+                )}
+                {element.label}
+                {element.hasIcon && element.icon && element.iconPosition === 'right' && (
+                  <span className="ml-2">
+                    {React.createElement(getIconComponent(element.icon), { className: "w-4 h-4" })}
+                  </span>
+                )}
+              </button>
             </div>
           );
         } else {

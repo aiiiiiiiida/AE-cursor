@@ -979,7 +979,7 @@ export function WorkflowBuilder() {
             <button 
               onClick={handleSaveWorkflow}
               disabled={isSaving}
-              className="flex items-center space-x-2 px-4 py-2 bg-[#4D3EE0] text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center space-x-2 px-4 py-2 bg-[#4D3EE0] text-white rounded-xl hover:bg-[#2927B2] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSaving ? (
                 <>
