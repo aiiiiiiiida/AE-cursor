@@ -1140,39 +1140,47 @@ export function WorkflowBuilder() {
       {selectedNode && (
         <div className="fixed top-[73px] right-0 w-[420px] h-[calc(100vh-73px)] bg-white border-l border-slate-200 flex flex-col z-10 transition-transform duration-300">
           {/* Side Panel Header */}
-          <div className="bg-white p-4 flex items-center justify-between">
-            <div>
-              <h3 className="text-[20px] font-semibold text-[#353B46]">
-                {selectedNode.id === 'trigger' ? 'Trigger' : (selectedNode.userAssignedName || selectedTemplate?.name || 'Configuration')}
-              </h3>
-              {(selectedNode.sidePanelDescription || selectedTemplate?.sidePanelDescription) && (
-                <p className="text-[13px] text-[#464F5E] mt-1">
-                  {selectedNode.sidePanelDescription || selectedTemplate?.sidePanelDescription}
-                </p>
-              )}
-            </div>
-            <div className="flex items-center space-x-3">
-              {selectedNode.id !== 'trigger' && (
-                <button
-                  onClick={() => setIsEditingElements(!isEditingElements)}
-                  className={`p-2 rounded-lg transition-colors ${
-                    isEditingElements
-                      ? 'bg-blue-100 text-blue-600'
-                      : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
-                  }`}
-                  title="Edit side panel elements"
-                >
-                  <Settings className="w-4 h-4" />
-                </button>
-              )}
-              <button
-                onClick={() => dispatch({ type: 'SELECT_NODE', payload: null as any })}
-                className="text-slate-400 hover:text-slate-600 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
+          <div className="bg-white p-4 flex justify-between items-start">
+  {/* Left: Title + optional subtitle */}
+  <div className="flex-1">
+    <div className="flex items-center justify-between">
+      <h3 className="text-[20px] font-semibold text-[#353B46]">
+        {selectedNode.id === 'trigger'
+          ? 'Trigger'
+          : selectedNode.userAssignedName || selectedTemplate?.name || 'Configuration'}
+      </h3>
+      {/* Right: Icons */}
+      <div className="flex items-center space-x-3 ml-4">
+        {selectedNode.id !== 'trigger' && (
+          <button
+            onClick={() => setIsEditingElements(!isEditingElements)}
+            className={`p-2 rounded-lg transition-colors ${
+              isEditingElements
+                ? 'bg-[#EAE8FB] text-[#2927B2]'
+                : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+            }`}
+            title="Edit side panel elements"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+        )}
+        <button
+          onClick={() => dispatch({ type: 'SELECT_NODE', payload: null as any })}
+          className="text-slate-400 hover:text-slate-600 transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+    </div>
+
+    {(selectedNode.sidePanelDescription || selectedTemplate?.sidePanelDescription) && (
+      <p className="text-[13px] text-[#464F5E] mt-1">
+        {selectedNode.sidePanelDescription || selectedTemplate?.sidePanelDescription}
+      </p>
+    )}
+  </div>
+</div>
+
 
           <div className="flex-1 overflow-y-auto p-4">
             <ActivityNodeConfiguration
@@ -1774,7 +1782,22 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove }: WorkflowUIElem
       <div className="flex items-center justify-between mb-3">
         <select
           value={element.type}
-          onChange={(e) => onUpdate(element.id, { type: e.target.value as UIElement['type'] })}
+          onChange={(e) => {
+            const newType = e.target.value as UIElement['type'];
+            if (newType === 'events-module' && (!element.events || element.events.length === 0)) {
+              onUpdate(element.id, {
+                type: newType,
+                events: [
+                  { title: 'The Dream Career Conference', subtitle: 'High Volume Hiring', tag: 'Upcoming' },
+                  { title: 'Technical Professionals Meetup', subtitle: 'High Volume Hiring', tag: 'Upcoming' },
+                  { title: 'How Phenom keeps employees happy', subtitle: 'High Volume Hiring', tag: 'Upcoming' }
+                ],
+                label: ''
+              });
+            } else {
+              onUpdate(element.id, { type: newType });
+            }
+          }}
           className="px-3 py-1 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
           <option value="text">Text Input</option>
@@ -1788,6 +1811,7 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove }: WorkflowUIElem
           <option value="section-divider">Section Divider</option>
           <option value="text-block">Text Block</option>
           <option value="date">Date Picker</option>
+          <option value="events-module">Events Module</option>
         </select>
         <button
           onClick={() => onRemove(element.id)}
@@ -1798,17 +1822,20 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove }: WorkflowUIElem
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mb-3">
-        <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">Label</label>
-          <input
-            type="text"
-            value={element.label}
-            onChange={(e) => onUpdate(element.id, { label: e.target.value })}
-            className="w-full px-2 py-1 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-        </div>
-        {element.type !== 'section-divider' && element.type !== 'text-block' && element.type !== 'date' && (
+      <div className="grid grid-cols-1 gap-3 mb-3">
+        {/* Hide label/placeholder for events-module, show events editor UI */}
+        {element.type !== 'section-divider' && element.type !== 'events-module' && (
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Label</label>
+            <input
+              type="text"
+              value={element.label}
+              onChange={(e) => onUpdate(element.id, { label: e.target.value })}
+              className="w-full px-2 py-1 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+        )}
+        {element.type !== 'section-divider' && element.type !== 'text-block' && element.type !== 'number' && element.type !== 'date' && element.type !== 'radio' && element.type !== 'toggle' && element.type !== 'events-module' && (
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Placeholder</label>
             <input
@@ -1819,16 +1846,71 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove }: WorkflowUIElem
             />
           </div>
         )}
-        {element.type === 'date' && (
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Placeholder</label>
-            <input
-              type="text"
-              value={element.placeholder || ''}
-              onChange={(e) => onUpdate(element.id, { placeholder: e.target.value })}
-              className="w-full px-2 py-1 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="e.g. Select a date"
-            />
+        {/* Events Module Editor */}
+        {element.type === 'events-module' && (
+          <div className="mb-3">
+            <label className="block text-xs font-medium text-slate-600 mb-1">Events</label>
+            <div className="space-y-3">
+              {(element.events || []).map((event, idx) => (
+                <div key={idx} className="border rounded-lg p-3 bg-slate-50 flex flex-col gap-2 relative">
+                  <button
+                    type="button"
+                    className="absolute top-2 right-2 text-slate-400 hover:text-red-500 p-1"
+                    onClick={() => {
+                      const newEvents = [...(element.events || [])];
+                      newEvents.splice(idx, 1);
+                      onUpdate(element.id, { events: newEvents });
+                    }}
+                    tabIndex={-1}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                  <input
+                    type="text"
+                    className="w-full px-2 py-1 border border-slate-300 rounded text-sm mb-1"
+                    placeholder="Event title"
+                    value={event.title}
+                    onChange={e => {
+                      const newEvents = [...(element.events || [])];
+                      newEvents[idx] = { ...event, title: e.target.value };
+                      onUpdate(element.id, { events: newEvents });
+                    }}
+                  />
+                  <input
+                    type="text"
+                    className="w-full px-2 py-1 border border-slate-300 rounded text-sm mb-1"
+                    placeholder="Event subtitle"
+                    value={event.subtitle}
+                    onChange={e => {
+                      const newEvents = [...(element.events || [])];
+                      newEvents[idx] = { ...event, subtitle: e.target.value };
+                      onUpdate(element.id, { events: newEvents });
+                    }}
+                  />
+                  <input
+                    type="text"
+                    className="w-full px-2 py-1 border border-slate-300 rounded text-sm"
+                    placeholder="Event tag"
+                    value={event.tag}
+                    onChange={e => {
+                      const newEvents = [...(element.events || [])];
+                      newEvents[idx] = { ...event, tag: e.target.value };
+                      onUpdate(element.id, { events: newEvents });
+                    }}
+                  />
+                </div>
+              ))}
+              <button
+                type="button"
+                className="mt-2 px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                onClick={() => {
+                  const newEvents = [...(element.events || []), { title: '', subtitle: '', tag: '' }];
+                  onUpdate(element.id, { events: newEvents });
+                }}
+              >
+                + Add Event
+              </button>
+            </div>
           </div>
         )}
       </div>
