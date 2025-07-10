@@ -652,7 +652,7 @@ export function WorkflowBuilder() {
                       {branchCount > 1 && (
                         <svg width={svgWidth} height={svgHeight} className="block" style={{ marginTop: 0 }}>
                           {/* Horizontal line at the very top */}
-                          <line x1={branchXs[0]} y1={0} x2={branchXs[branchCount-1]} y2={0} stroke="#CBD5E1" strokeWidth="2" />
+                          <line x1={branchXs[0]} y1={0} x2={branchXs[branchCount-1]} y2={0} stroke="#CBD5E1" strokeWidth="3" />
                           {/* Rounded corners and verticals */}
                           {branchXs.map((x: number, idx: any) => (
                             <React.Fragment key={idx}>
@@ -660,7 +660,7 @@ export function WorkflowBuilder() {
                               <path
                                 d={`M${x},0 Q${x},8 ${x},${svgHeight}`}
                                 stroke="#CBD5E1"
-                                strokeWidth="2"
+                                strokeWidth="4"
                                 fill="none"
                               />
                             </React.Fragment>
@@ -668,37 +668,112 @@ export function WorkflowBuilder() {
                         </svg>
                       )}
                       {/* Branch columns */}
-                      <div className="flex flex-row justify-between w-full" style={{ gap: `${gap}px`, marginTop: branchCount > 1 ? -8 : 0 }}>
-                        {branches.map((branchName: string, branchIdx: number) => (
-                          <div key={branchName} className="flex flex-col items-center w-[264px]">
-                            {/* Vertical line from horizontal SVG to tag */}
-                            <div className="w-0.5 h-4 bg-slate-300" />
-                            {/* Green branch tag */}
-                            <div className="bg-[#C6F2F2] text-[#2B4C4C] px-2 py-1 rounded-lg mb-0 text-xs font-normal">{branchName}</div>
-                            {/* Vertical line, plus, vertical line, then activities */}
-                            <div className="w-0.5 h-4 bg-slate-300" />
-                            {/* Only show plus button if branch is empty */}
-                            {getNodesForBranch(branchName).length === 0 && (
-                              <button
-                                onClick={() => handleAddActivity(0, branchName)}
-                                className="w-6 h-6 bg-gray-400 text-white rounded-lg flex items-center justify-center mt-0 hover:bg-gray-500 transition-colors"
-                              >
-                                <Plus className="w-4 h-4" />
-                              </button>
-                            )}
-                            <div className="w-0.5 h-4 bg-slate-300" />
-                            {/* Render activities for this branch directly under the tag and plus button */}
-                            {renderBranch(branchName, branchIdx + 1, node.id)}
-                          </div>
-                        ))}
+                      <div className="flex flex-row justify-center gap-x-12 mt-8">
+                        {branches.map((branchName: string, branchIdx: number) => {
+                          const branchNodes = getNodesForBranch(branchName);
+                          return (
+                            <div key={branchName} className="flex flex-col items-center w-[264px]">
+                              {/* Branch tag */}
+                              <div className="bg-[#C6F2F2] text-[#2B4C4C] px-2 py-1 rounded-lg text-xs font-normal mb-0 mt-0">{branchName}</div>
+                              {/* Vertical line from tag to first node or plus */}
+                              <div className="w-0.5 h-4 bg-slate-300" />
+                              {/* If branch is empty, show plus button */}
+                              {branchNodes.length === 0 && (
+                                <>
+                                  <button
+                                    onClick={() => handleAddActivity(0, branchName)}
+                                    className="w-6 h-6 bg-gray-400 text-white rounded-lg flex items-center justify-center mt-0 hover:bg-gray-500 transition-colors"
+                                  >
+                                    <Plus className="w-4 h-4" />
+                                  </button>
+                                  <div className="w-0.5 h-4 bg-slate-300" />
+                                </>
+                              )}
+                              {/* Render all nodes in this branch */}
+                              {branchNodes.map((node, idx) => {
+                                const template = getActivityTemplate(node.activityTemplateId);
+                                if (!template) return null;
+                                const IconComponent = getIconComponent(template.icon);
+                                const iconColor = getIconColor(template.iconColor || 'purple');
+                                const displayDescription = processMapDescription(
+                                  node.mapDescription || template.description,
+                                  node
+                                );
+                                const isLast = idx === branchNodes.length - 1;
+                                return (
+                                  <React.Fragment key={node.id}>
+                                    {/* Activity card */}
+                                    <div
+                                      className={`w-full bg-white rounded-xl p-4 cursor-pointer shadow-sm hover:shadow-md transition-all duration-200 relative group
+                                        ${selectedNode?.id === node.id
+                                          ? 'border-2 border-[#4D3EE0] shadow-sm'
+                                          : 'border border-slate-200'
+                                        }`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleNodeClick(node);
+                                      }}
+                                    >
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleNodeDelete(node.id);
+                                        }}
+                                        className="absolute top-3 right-3 p-1 text-slate-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                      <div className="flex items-center space-x-3">
+                                        <div className="w-8 h-8 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ backgroundColor: iconColor.bg }}>
+                                          <IconComponent className="w-4 h-4" style={{ color: iconColor.iconColor }} />
+                                        </div>
+                                        <h3 className="font-medium text-[#353B46] text-[14px] mb-0">{node.userAssignedName || template.name}</h3>
+                                      </div>
+                                      {displayDescription && (
+                                        <p className="text-[10px] text-[#637085] leading-relaxed mt-2">{displayDescription}</p>
+                                      )}
+                                    </div>
+                                    {/* Vertical line below card */}
+                                    <div className="w-0.5 h-4 bg-slate-300" />
+                                    {/* Plus button after each node except last */}
+                                    {!isLast && (
+                                      <>
+                                        <button
+                                          onClick={e => handleAddActivity(idx + 1, branchName, e)}
+                                          className="w-4 h-4 flex items-center justify-center rounded-full bg-[#AEB5C2] text-[#AEB5C2] transition-all duration-200 group hover:w-6 hover:h-6 hover:bg-gray-400 hover:text-white hover:rounded-lg"
+                                          style={{ minWidth: 12, minHeight: 12 }}
+                                        >
+                                          <Plus className="w-3 h-3 group-hover:w-4 group-hover:h-4 transition-all duration-200" />
+                                        </button>
+                                        <div className="w-0.5 h-4 bg-slate-300" />
+                                      </>
+                                    )}
+                                    {/* Plus button after last node */}
+                                    {isLast && (
+                                      <>
+                                        <button
+                                          onClick={e => handleAddActivity(idx + 1, branchName, e)}
+                                          className="w-6 h-6 bg-gray-400 text-white rounded-lg flex items-center justify-center hover:bg-gray-500 transition-colors"
+                                        >
+                                          <Plus className="w-4 h-4" />
+                                        </button>
+                                        <div className="w-0.5 h-4 bg-slate-300" />
+                                      </>
+                                    )}
+                                  </React.Fragment>
+                                );
+                              })}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );
                 })()
               ) : (
-                <div className="mb-0 flex justify-center">
+                <div className="mb-0 flex flex-col items-center w-[264px]">
                   <div
-                    className={`w-[264px] bg-white rounded-xl p-4 cursor-pointer shadow-sm hover:shadow-md transition-all duration-200 relative group
+                    className={`w-full bg-white rounded-xl p-4 cursor-pointer shadow-sm hover:shadow-md transition-all duration-200 relative group
                       ${selectedNode?.id === node.id 
                         ? 'border-2 border-[#4D3EE0] shadow-sm' 
                         : 'border border-slate-200'
