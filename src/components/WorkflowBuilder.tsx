@@ -733,11 +733,9 @@ export function WorkflowBuilder() {
         {branchNodes.map((node, index) => {
           const template = getActivityTemplate(node.activityTemplateId);
           if (!template) return null;
-          const isCondition = template.name === 'Condition';
-
           const IconComponent = getIconComponent(template.icon);
           const iconColor = getIconColor(template.iconColor || 'purple');
-          const displayDescription = isCondition ? getConditionBranchSummary(node) : processMapDescription(
+          const displayDescription = isConditionNode(node) ? getConditionBranchSummary(node) : processMapDescription(
             node.mapDescription || template.description, 
             node
           );
@@ -764,7 +762,7 @@ export function WorkflowBuilder() {
                 <div className="w-0.5 h-6 bg-slate-300"></div>
               </div>
               {/* Node rendering (Condition or not) */}
-              {isCondition ? (
+              {isConditionNode(node) ? (
                 (() => {
                   const branches = node.metadata?.branches || ['Branch 1', 'Branch 2'];
                   const branchCount = branches.length;
@@ -836,7 +834,44 @@ export function WorkflowBuilder() {
                           return (
                             <div key={branchName} className="flex flex-col items-center w-[264px]">
                               {/* Branch tag */}
-                              <div className="bg-[#C6F2F2] text-[#2B4C4C] px-2 py-1 rounded-lg text-xs font-normal mb-0 mt-0">{branchName}</div>
+                              {editingBranch === branchName ? (
+                                <input
+                                  ref={inputRef}
+                                  className="bg-[#C6F2F2] text-[#2B4C4C] px-2 py-1 rounded-lg text-xs font-normal mb-0 mt-0 outline-none border border-[#2B4C4C]"
+                                  value={editingBranchValue}
+                                  onChange={e => setEditingBranchValue(e.target.value)}
+                                  onBlur={() => {
+                                    if (editingBranchValue && editingBranchValue !== branchName) {
+                                      updateBranchNameEverywhere(branchName, editingBranchValue);
+                                    }
+                                    setEditingBranch(null);
+                                  }}
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') {
+                                      if (editingBranchValue && editingBranchValue !== branchName) {
+                                        updateBranchNameEverywhere(branchName, editingBranchValue);
+                                      }
+                                      setEditingBranch(null);
+                                    } else if (e.key === 'Escape') {
+                                      setEditingBranch(null);
+                                    }
+                                  }}
+                                  autoFocus
+                                  style={{ minWidth: 60 }}
+                                />
+                              ) : (
+                                <div
+                                  className="bg-[#C6F2F2] text-[#2B4C4C] px-2 py-1 rounded-lg text-xs font-normal mb-0 mt-0 cursor-pointer hover:ring-2 hover:ring-[#2B4C4C]"
+                                  onClick={() => {
+                                    setEditingBranch(branchName);
+                                    setEditingBranchValue(branchName);
+                                    setTimeout(() => inputRef.current?.focus(), 0);
+                                  }}
+                                  title="Click to rename branch"
+                                >
+                                  {branchName}
+                                </div>
+                              )}
                               {/* Vertical line from tag to first node or plus */}
                               <div className="w-0.5 h-4 bg-slate-300" />
                               {/* If branch is empty, show plus button */}
@@ -859,6 +894,7 @@ export function WorkflowBuilder() {
                                   node
                                 );
                                 const isLast = idx === branchNodes.length - 1;
+                                const isCondition = template.name === 'Condition';
                                 return (
                                   <React.Fragment key={node.id}>
                                     {/* Activity card */}
@@ -884,7 +920,7 @@ export function WorkflowBuilder() {
                                       </button>
                                       <div className="flex items-center space-x-3">
                                         <div className="w-8 h-8 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ backgroundColor: iconColor.bg }}>
-                                          <IconComponent className="w-4 h-4" style={{ color: iconColor.iconColor }} />
+                                          <IconComponent className="w-4 h-4" style={{ color: iconColor.iconColor, ...(isCondition ? { transform: 'rotate(90deg)' } : {}) }} />
                                         </div>
                                         <h3 className="font-medium text-[#353B46] text-[14px] mb-0">{node.userAssignedName || template.name}</h3>
                                       </div>
@@ -961,13 +997,13 @@ export function WorkflowBuilder() {
                 </div>
               )}
               {/* Connection Line */}
-              {(!isCondition) && (
+              {(!isConditionNode(node)) && (
                 <div className="flex justify-center mb-0">
                   <div className="w-0.5 h-6 bg-slate-300"></div>
                 </div>
               )}
               {/* Plus button after (except for Condition node) */}
-              {!isCondition && (
+              {!isConditionNode(node) && (
                 <div className="flex justify-center mb-0">
                   {isLast ? (
                     <button
@@ -1134,6 +1170,51 @@ export function WorkflowBuilder() {
       }
     });
     return nodes;
+  }
+
+  // Add at the top, after imports
+  const [editingBranch, setEditingBranch] = useState<string | null>(null);
+  const [editingBranchValue, setEditingBranchValue] = useState<string>('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Helper to update all references to a branch name in the workflow
+  function updateBranchNameEverywhere(oldName: string, newName: string) {
+    if (!workflow) return;
+    // Update nodes' metadata.branch
+    const updatedNodes = workflow.nodes.map((node: any) => {
+      let updated = { ...node };
+      if (node.metadata?.branch === oldName) {
+        updated = { ...updated, metadata: { ...updated.metadata, branch: newName } };
+      }
+      // If this is a condition node, update its branches array
+      if (Array.isArray(node.metadata?.branches)) {
+        updated = {
+          ...updated,
+          metadata: {
+            ...updated.metadata,
+            branches: node.metadata.branches.map((b: string) => b === oldName ? newName : b)
+          }
+        };
+      }
+      // If there are other references (e.g., branchConditions), update those too
+      if (node.metadata?.branchConditions) {
+        const newBranchConditions: any = {};
+        Object.entries(node.metadata.branchConditions).forEach(([k, v]) => {
+          newBranchConditions[k === oldName ? newName : k] = v;
+        });
+        updated = {
+          ...updated,
+          metadata: {
+            ...updated.metadata,
+            branchConditions: newBranchConditions
+          }
+        };
+      }
+      return updated;
+    });
+    const updatedWorkflow = { ...workflow, nodes: updatedNodes };
+    dispatch({ type: 'UPDATE_WORKFLOW', payload: updatedWorkflow });
+    updateWorkflow(updatedWorkflow);
   }
 
   return (
@@ -1565,6 +1646,7 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
 
   const [editingBranchIndex, setEditingBranchIndex] = useState<number | null>(null);
   const [editingBranchName, setEditingBranchName] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<'Configuration' | 'Advanced' | 'User Interface'>('Configuration');
 
   if (!template) {
     return <div className="text-slate-500">Template not found</div>;
@@ -1582,10 +1664,9 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
       id: Date.now().toString(),
       type: 'text',
       label: 'New Field',
-      required: false
+      required: false,
+      tab: activeTab
     };
-    
-    // Create a copy of current elements and add the new one
     const updatedElements = [...currentElements, newElement];
     onUpdate({ localSidePanelElements: updatedElements });
   };
@@ -1672,6 +1753,13 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
     onUpdate({ metadata: updatedMetadata });
   };
 
+  // Tab logic: get all tabs present in currentElements
+  const tabSet = new Set((currentElements || []).map(el => el.tab || 'Configuration'));
+  const allTabs = ['Configuration', 'Advanced', 'User Interface'] as const;
+  const showTabs = isEditingElements && node.id !== 'trigger';
+  // Only show elements for the active tab
+  const filteredElements = currentElements.filter(el => (el.tab || 'Configuration') === activeTab);
+
   return (
     <div className="space-y-4">
       {isEditingElements && node.id !== 'trigger' ? (
@@ -1710,7 +1798,6 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
                 Map Description
               </label>
               <MapDescriptionInput
-              
                 value={node.mapDescription || template.description || ''}
                 onChange={(value) => onUpdate({ mapDescription: value })}
                 uiElements={currentElements}
@@ -1718,33 +1805,57 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
             </div>
           )}
 
+          {/* Tab Bar for switching between Configuration, Advanced, User Interface */}
+          <div className="flex bg-[#F5F7FA] rounded-xl p-0.5 w-full max-w-full mb-4">
+            {allTabs.map((tab, idx) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                className={
+                  `flex-1 py-2 text-[12px] font-semibold focus:outline-none transition-all duration-150 ` +
+                  (activeTab === tab
+                    ? 'bg-white shadow text-slate-700 z-10 ' +
+                      (idx === 0 ? 'rounded-l-xl' : '') +
+                      (idx === allTabs.length - 1 ? ' rounded-r-xl' : '')
+                    : 'bg-transparent text-slate-500 hover:text-slate-700 ' +
+                      (idx === 0 ? 'rounded-l-xl' : '') +
+                      (idx === allTabs.length - 1 ? ' rounded-r-xl' : ''))
+                }
+                style={{ minWidth: 0 }}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
           {/* Side Panel Elements */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <h5 className="text-sm font-medium text-slate-700">Side Panel Elements</h5>
               <button
                 onClick={addUIElement}
-                className="flex items-center space-x-1 px-3 py-1 bg-blue-600 text-white rounded-lg text-xs hover:bg-blue-700 transition-colors"
+                className="flex items-center space-x-1 px-3 py-1 bg-[#4D3EE0] text-white rounded-lg text-xs hover:bg-[#2927B2] transition-colors"
               >
                 <Plus className="w-3 h-3" />
-                <span>Add</span>
+                <span>Add UI Element</span>
               </button>
             </div>
-            
-            {currentElements.length === 0 ? (
+            {filteredElements.length === 0 ? (
               <div className="text-center py-6 border-2 border-dashed border-[#8C95A8] rounded-lg">
                 <Settings className="w-6 h-6 text-slate-400 mx-auto mb-2" />
-                <p className="text-sm text-slate-600">No elements configured</p>
+                <p className="text-sm text-slate-600">No elements in this tab yet.</p>
                 <p className="text-xs text-slate-500">Click "Add" to create your first element</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {currentElements.map((element) => (
+                {filteredElements.map((element) => (
                   <WorkflowUIElementEditor
                     key={element.id}
                     element={element}
                     onUpdate={updateUIElement}
                     onRemove={removeUIElement}
+                    tabSelector
+                    onTabChange={tab => updateUIElement(element.id, { tab })}
                   />
                 ))}
               </div>
@@ -1944,9 +2055,11 @@ interface WorkflowUIElementEditorProps {
   element: UIElement;
   onUpdate: (elementId: string, updates: Partial<UIElement>) => void;
   onRemove: (elementId: string) => void;
+  tabSelector?: boolean;
+  onTabChange?: (tab: 'Configuration' | 'Advanced' | 'User Interface') => void;
 }
 
-function WorkflowUIElementEditor({ element, onUpdate, onRemove }: WorkflowUIElementEditorProps) {
+function WorkflowUIElementEditor({ element, onUpdate, onRemove, tabSelector, onTabChange }: WorkflowUIElementEditorProps) {
   const addConditionalFollowUp = () => {
     const newFollowUp: ConditionalFollowUp = {
       conditionValue: element.options?.[0] || (element.type === 'toggle' ? true : ''),
@@ -2016,6 +2129,25 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove }: WorkflowUIElem
 
   return (
     <div className="p-3 border border-slate-200 rounded-lg bg-slate-50">
+      {/* Tab Selector Dropdown */}
+      {/* {tabSelector && (
+        <div className="mb-3">
+          <label className="block text-xs font-medium text-slate-600 mb-1">Tab</label>
+          <select
+            value={element.tab || 'Configuration'}
+            onChange={e => {
+              const tab = e.target.value as 'Configuration' | 'Advanced' | 'User Interface';
+              if (onTabChange) onTabChange(tab);
+              else onUpdate(element.id, { tab });
+            }}
+            className="w-full px-2 py-1 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="Configuration">Configuration</option>
+            <option value="Advanced">Advanced</option>
+            <option value="User Interface">User Interface</option>
+          </select>
+        </div>
+      )} */}
       <div className="flex items-center justify-between mb-3">
         <UIElementTypeDropdown
           value={element.type}
@@ -2062,17 +2194,33 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove }: WorkflowUIElem
             />
           </div>
         ) : element.type !== 'section-divider' && element.type !== 'screening-questions' && element.type !== 'conditions-module' && element.type !== 'events-module' && (
-          <div className={element.type === 'toggle' ? 'col-span-2' : ''}>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Label</label>
-            <input
-              type="text"
-              value={element.label}
-              onChange={e => onUpdate(element.id, { label: e.target.value })}
-              className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
+          // Remove label and placeholder for trigger-conditions-module
+          element.type === 'trigger-conditions-module' ? null :
+          // Add label input for file-upload
+          element.type === 'file-upload' ? (
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-slate-600 mb-1">Label</label>
+              <input
+                type="text"
+                value={element.label}
+                onChange={e => onUpdate(element.id, { label: e.target.value })}
+                className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          ) : (
+            <div className={element.type === 'toggle' ? 'col-span-2' : ''}>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Label</label>
+              <input
+                type="text"
+                value={element.label}
+                onChange={e => onUpdate(element.id, { label: e.target.value })}
+                className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          )
         )}
-        {element.type !== 'section-divider' && element.type !== 'screening-questions' && element.type !== 'conditions-module' && element.type !== 'events-module' && element.type !== 'checkbox' && element.type !== 'button' && (
+        {/* Placeholder for text, textarea, dropdown, number */}
+        {(element.type === 'text' || element.type === 'textarea' || element.type === 'dropdown' || element.type === 'number') && (
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Placeholder</label>
             <input
@@ -2080,20 +2228,99 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove }: WorkflowUIElem
               value={element.placeholder || ''}
               onChange={e => onUpdate(element.id, { placeholder: e.target.value })}
               className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Placeholder"
             />
           </div>
         )}
+        {/* Default value, min, max, step for number */}
+        {element.type === 'number' && (
+          <>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Default Value</label>
+              <input
+                type="number"
+                value={element.defaultValue !== undefined && element.defaultValue !== null ? String(element.defaultValue) : ''}
+                onChange={e => onUpdate(element.id, { defaultValue: e.target.value === '' ? undefined : Number(e.target.value) })}
+                className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Default value"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Min</label>
+              <input
+                type="number"
+                value={element.min !== undefined && element.min !== null ? String(element.min) : ''}
+                onChange={e => onUpdate(element.id, { min: e.target.value === '' ? undefined : Number(e.target.value) })}
+                className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Min"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Max</label>
+              <input
+                type="number"
+                value={element.max !== undefined && element.max !== null ? String(element.max) : ''}
+                onChange={e => onUpdate(element.id, { max: e.target.value === '' ? undefined : Number(e.target.value) })}
+                className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Max"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Step</label>
+              <input
+                type="number"
+                value={element.step !== undefined && element.step !== null ? String(element.step) : ''}
+                onChange={e => onUpdate(element.id, { step: e.target.value === '' ? undefined : Number(e.target.value) })}
+                className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Step"
+              />
+            </div>
+          </>
+        )}
+        {/* Default value, min, max, step for date */}
         {element.type === 'date' && (
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Placeholder</label>
-            <input
-              type="text"
-              value={element.placeholder || ''}
-              onChange={e => onUpdate(element.id, { placeholder: e.target.value })}
-              className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="e.g. Select a date"
-            />
-          </div>
+          <>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Default Value</label>
+              <input
+                type="date"
+                value={element.defaultValue !== undefined && element.defaultValue !== null ? String(element.defaultValue) : ''}
+                onChange={e => onUpdate(element.id, { defaultValue: e.target.value })}
+                className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Default value"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Min</label>
+              <input
+                type="date"
+                value={element.min !== undefined && element.min !== null ? String(element.min) : ''}
+                onChange={e => onUpdate(element.id, { min: e.target.value })}
+                className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Min"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Max</label>
+              <input
+                type="date"
+                value={element.max !== undefined && element.max !== null ? String(element.max) : ''}
+                onChange={e => onUpdate(element.id, { max: e.target.value })}
+                className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Max"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Step (days)</label>
+              <input
+                type="number"
+                value={element.step !== undefined && element.step !== null ? String(element.step) : ''}
+                onChange={e => onUpdate(element.id, { step: e.target.value === '' ? undefined : Number(e.target.value) })}
+                className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Step (days)"
+              />
+            </div>
+          </>
         )}
       </div>
       {/* Default text for text and textarea */}
@@ -2124,270 +2351,108 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove }: WorkflowUIElem
           </label>
         </div>
       )}
-      {/* Options for dropdown, radio, checkbox */}
-      {(element.type === 'dropdown' || element.type === 'radio' || element.type === 'checkbox') && (
+      {/* Is disabled for text input only */}
+      {element.type === 'text' && (
+        <div className="flex items-center mb-3">
+          <input
+            type="checkbox"
+            id={`disabled-${element.id}`}
+            checked={!!element.disabled}
+            onChange={e => onUpdate(element.id, { disabled: e.target.checked })}
+            className="mr-2"
+          />
+          <label htmlFor={`disabled-${element.id}`} className="text-xs text-slate-600">
+            Is disabled
+          </label>
+        </div>
+      )}
+      {/* Has follow-up elements for dropdown, radio, checkbox, toggle */}
+      {(element.type === 'dropdown' || element.type === 'radio' || element.type === 'checkbox' || element.type === 'toggle') && (
+        <div className="flex items-center mb-3">
+          <input
+            type="checkbox"
+            id={`has-followup-${element.id}`}
+            checked={!!element.hasConditionalFollowUps}
+            onChange={e => onUpdate(element.id, { hasConditionalFollowUps: e.target.checked })}
+            className="mr-2"
+          />
+          <label htmlFor={`has-followup-${element.id}`} className="text-xs text-slate-600">
+            Has follow-up elements
+          </label>
+        </div>
+      )}
+      {/* Conditional follow-up elements for dropdown, radio, checkbox, toggle (functional) */}
+      {(element.type === 'dropdown' || element.type === 'radio' || element.type === 'checkbox' || element.type === 'toggle') && element.hasConditionalFollowUps && (
         <div className="mb-3">
           <div className="flex items-center justify-between mb-2">
-            <label className="block text-xs font-medium text-slate-600">Options</label>
+            <label className="block text-xs font-medium text-slate-600">Follow-up Elements</label>
             <button
               type="button"
-              onClick={() => {
-                const currentOptions = element.options || [];
-                onUpdate(element.id, { options: [...currentOptions, ''] });
-              }}
+              onClick={addConditionalFollowUp}
               className="flex items-center space-x-1 px-2 py-1 bg-[#4D3EE0] text-white rounded-lg text-xs hover:bg-[#2927B2] transition-colors"
             >
               <Plus className="w-3 h-3" />
-              <span>Add</span>
+              <span>Add Follow-up</span>
             </button>
           </div>
-          <div className="space-y-2">
-            {(element.options || []).map((option, index) => (
-              <div key={index} className="relative">
-                <input
-                  type="text"
-                  value={option}
-                  onChange={e => {
-                    const newOptions = [...(element.options || [])];
-                    newOptions[index] = e.target.value;
-                    onUpdate(element.id, { options: newOptions });
-                  }}
-                  className="w-full pr-8 px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder={`Option ${index + 1}`}
-                />
+          {(element.conditionalFollowUps || []).map((followUp, followUpIndex) => (
+            <div key={followUpIndex} className="mb-2 p-2 border border-slate-200 rounded bg-white">
+              <div className="flex items-center mb-2">
+                <label className="block text-xs font-medium text-slate-600 mr-2">For option:</label>
+                {(element.type === 'checkbox' || element.type === 'toggle') ? (
+                  <select
+                    value={followUp.conditionValue === true ? 'true' : 'false'}
+                    onChange={e => updateConditionalFollowUp(followUpIndex, { conditionValue: e.target.value === 'true' })}
+                    className="px-2 py-1 border border-[#8C95A8] rounded-[10px] text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="true">Checked</option>
+                    <option value="false">Unchecked</option>
+                  </select>
+                ) : (
+                  <select
+                    value={followUp.conditionValue as string}
+                    onChange={e => updateConditionalFollowUp(followUpIndex, { conditionValue: e.target.value })}
+                    className="px-2 py-1 border border-[#8C95A8] rounded-[10px] text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Select option...</option>
+                    {element.options?.map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                )}
                 <button
                   type="button"
-                  onClick={() => {
-                    const newOptions = (element.options || []).filter((_, i) => i !== index);
-                    onUpdate(element.id, { options: newOptions });
-                  }}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
-                  tabIndex={-1}
-                  aria-label="Remove option"
+                  onClick={() => removeConditionalFollowUp(followUpIndex)}
+                  className="ml-2 p-1 text-red-500 hover:text-red-700"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
-            ))}
-            {(!element.options || element.options.length === 0) && (
-              <div className="text-center py-3 border-2 border-dashed border-slate-300 rounded text-xs text-slate-500">
-                No options added yet. Click "Add" to create your first option.
-              </div>
-            )}
-          </div>
-          {/* Default option selector for dropdown and radio */}
-          {(element.type === 'dropdown' || element.type === 'radio') && (
-            <div className="mt-2">
-              <label className="block text-xs font-medium text-slate-600 mb-1">Default Selected Option</label>
-              <select
-                value={typeof element.defaultValue === 'string' ? element.defaultValue : ''}
-                onChange={e => onUpdate(element.id, { defaultValue: e.target.value || undefined })}
-                disabled={!element.options || element.options.length === 0}
-                className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">None</option>
-                {element.options && element.options.map((option, idx) => (
-                  <option key={idx} value={option}>{option}</option>
+              {/* Nested follow-up elements */}
+              <div className="ml-4">
+                {(followUp.elements || []).map((el, idx) => (
+                  <WorkflowUIElementEditor
+                    key={el.id}
+                    element={el}
+                    onUpdate={(id, updates) => updateElementInConditionalFollowUp(followUpIndex, id, updates)}
+                    onRemove={id => removeElementFromConditionalFollowUp(followUpIndex, id)}
+                  />
                 ))}
-              </select>
-            </div>
-          )}
-        </div>
-      )}
-      {/* Multiselect for dropdown */}
-      {element.type === 'dropdown' && (
-        <div className="mb-3">
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id={`multiselect-${element.id}`}
-              checked={element.multiselect || false}
-              onChange={e => onUpdate(element.id, { multiselect: e.target.checked })}
-              className="mr-2"
-            />
-            <label htmlFor={`multiselect-${element.id}`} className="text-xs text-slate-600">
-              Allow multiple selections
-            </label>
-          </div>
-        </div>
-      )}
-      {/* Button-specific configurations */}
-      {element.type === 'button' && (
-        <div className="space-y-3 mb-3">
-          {/* Has title checkbox */}
-          <div className="flex items-center mb-2">
-            <input
-              type="checkbox"
-              id={`has-title-${element.id}`}
-              checked={!!element.hasTitle}
-              onChange={e => onUpdate(element.id, { hasTitle: e.target.checked })}
-              className="mr-2"
-            />
-            <label htmlFor={`has-title-${element.id}`} className="text-xs text-slate-600">
-              Has title
-            </label>
-          </div>
-          {/* Title input */}
-          {element.hasTitle && (
-            <div className="mb-2">
-              <label className="block text-xs font-medium text-slate-600 mb-1">Title</label>
-              <input
-                type="text"
-                value={element.title || ''}
-                onChange={e => onUpdate(element.id, { title: e.target.value })}
-                className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Button title"
-              />
-            </div>
-          )}
-          {/* Has Icon checkbox */}
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id={`has-icon-${element.id}`}
-              checked={element.hasIcon || false}
-              onChange={e => onUpdate(element.id, { hasIcon: e.target.checked })}
-              className="mr-2"
-            />
-            <label htmlFor={`has-icon-${element.id}`} className="text-xs text-slate-600">
-              Has icon
-            </label>
-          </div>
-          {/* Icon selection and position */}
-          {element.hasIcon && (
-            <div className="space-y-3 ml-4  rounded-lg">
-              <div>
-                <div className="flex flex-wrap gap-1">
-                  {AVAILABLE_ICONS.map((iconOption) => {
-                    const IconComponent = iconOption.component;
-                    const isSelected = element.icon === iconOption.name;
-                    return (
-                      <button
-                        key={iconOption.name}
-                        type="button"
-                        onClick={() => onUpdate(element.id, { icon: normalizeIconName(iconOption.name) })}
-                        className={`p-1 rounded border bg-white transition-all duration-200 ${
-                          isSelected
-                            ? 'border-[#4D3EE0] bg-blue-50'
-                            : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                        }`}
-                      >
-                        <IconComponent className="w-4 h-4 mx-auto" style={{ color: '#4D3EE0' }} />
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-600 mb-2">Icon Position</label>
-                <div className="flex space-x-2">
-                  <button
-                    type="button"
-                    onClick={() => onUpdate(element.id, { iconPosition: 'left' })}
-                    className={`px-3 py-1 rounded-md text-xs transition-colors ${
-                      (element.iconPosition || 'left') === 'left'
-                        ? 'bg-blue-50 text-slate-800  border border-[#4D3EE0]'
-                        : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-200'
-                    }`}
-                  >
-                    Left
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onUpdate(element.id, { iconPosition: 'right' })}
-                    className={`px-3 py-1 rounded-md text-xs transition-colors ${
-                      element.iconPosition === 'right'
-                        ? 'bg-blue-50 text-slate-800 border border-[#4D3EE0]'
-                        : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-200'
-                    }`}
-                  >
-                    Right
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-      {/* Section title for section-divider */}
-      {element.type === 'section-divider' && (
-        <div className="mb-3">
-          <label className="block text-xs font-medium text-slate-600 mb-1">Section Title</label>
-          <input
-            type="text"
-            value={element.text || element.label}
-            onChange={e => onUpdate(element.id, { text: e.target.value, label: e.target.value })}
-            className="w-full px-2 py-1 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="Section title (optional)"
-          />
-          <div className="text-xs text-slate-500 mt-1">Leave empty if you just want a divider line</div>
-        </div>
-      )}
-      {/* Events Module Editor */}
-      {element.type === 'events-module' && (
-        <div className="mb-3">
-          <label className="block text-xs font-medium text-slate-600 mb-1">Events</label>
-          <div className="space-y-3">
-            {(element.events || []).map((event, idx) => (
-              <div key={idx} className="border rounded-lg p-3 bg-slate-50 flex flex-col gap-2 relative">
                 <button
                   type="button"
-                  className="absolute top-2 right-2 text-slate-400 hover:text-red-500 p-1"
-                  onClick={() => {
-                    const newEvents = [...(element.events || [])];
-                    newEvents.splice(idx, 1);
-                    onUpdate(element.id, { events: newEvents });
-                  }}
-                  tabIndex={-1}
+                  onClick={() => addElementToConditionalFollowUp(followUpIndex)}
+                  className="mt-2 px-2 py-1 bg-[#4D3EE0] text-white rounded text-xs hover:bg-[#2927B2]"
                 >
-                  <X className="w-4 h-4" />
+                  + Add Follow-up Field
                 </button>
-                <input
-                  type="text"
-                  className="w-full px-2 py-1 border border-slate-300 rounded text-sm mb-1"
-                  placeholder="Event title"
-                  value={event.title}
-                  onChange={e => {
-                    const newEvents = [...(element.events || [])];
-                    newEvents[idx] = { ...event, title: e.target.value };
-                    onUpdate(element.id, { events: newEvents });
-                  }}
-                />
-                <input
-                  type="text"
-                  className="w-full px-2 py-1 border border-slate-300 rounded text-sm mb-1"
-                  placeholder="Event subtitle"
-                  value={event.subtitle}
-                  onChange={e => {
-                    const newEvents = [...(element.events || [])];
-                    newEvents[idx] = { ...event, subtitle: e.target.value };
-                    onUpdate(element.id, { events: newEvents });
-                  }}
-                />
-                <input
-                  type="text"
-                  className="w-full px-2 py-1 border border-slate-300 rounded text-sm"
-                  placeholder="Event tag"
-                  value={event.tag}
-                  onChange={e => {
-                    const newEvents = [...(element.events || [])];
-                    newEvents[idx] = { ...event, tag: e.target.value };
-                    onUpdate(element.id, { events: newEvents });
-                  }}
-                />
               </div>
-            ))}
-            <button
-              type="button"
-              className="mt-2 px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
-              onClick={() => {
-                const newEvents = [...(element.events || []), { title: '', subtitle: '', tag: '' }];
-                onUpdate(element.id, { events: newEvents });
-              }}
-            >
-              + Add Event
-            </button>
-          </div>
+            </div>
+          ))}
+          {(element.conditionalFollowUps || []).length === 0 && (
+            <div className="text-center py-3 border-2 border-dashed border-slate-300 rounded text-xs text-slate-500">
+              No follow-up elements added yet.
+            </div>
+          )}
         </div>
       )}
     </div>

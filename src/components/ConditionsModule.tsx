@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plus, Split, ChevronDown, Trash2 } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Plus, Split, ChevronDown, Trash2, X } from 'lucide-react';
 
 const PROPERTY_OPTIONS = [
   { label: 'Job ID', value: 'jobID', values: ['302', '203', '504'] },
@@ -37,6 +37,9 @@ export default function ConditionsModule({ branches: propBranches, onBranchesCha
   onBranchesChange?: (branches: any[]) => void;
 } = {}) {
   const [outerLogic, setOuterLogic] = React.useState<string>('or');
+  const [editingBranchIdx, setEditingBranchIdx] = useState<number | null>(null);
+  const [editingBranchValue, setEditingBranchValue] = useState<string>('');
+  const inputRef = useRef<HTMLInputElement>(null);
   const branches = propBranches || [
     { name: 'Branch 1', outerLogic: 'or', groups: [
       { lines: [{ property: '', operator: 'is', value: '' }], groupLogic: 'or' }
@@ -150,7 +153,46 @@ export default function ConditionsModule({ branches: propBranches, onBranchesCha
         <div key={branchIdx}>
           {branches.length > 1 && (
             <div className="flex items-center mb-3 group justify-between">
-              <span className="px-3 py-1 rounded-lg text-xs font-medium bg-[#DDF3F6] text-[#2B6476] inline-block">{branch.name}</span>
+              {editingBranchIdx === branchIdx ? (
+                <input
+                  ref={inputRef}
+                  className="px-3 py-1 rounded-lg text-xs font-medium bg-[#DDF3F6] text-[#2B6476] outline-none border border-[#2B6476]"
+                  value={editingBranchValue}
+                  onChange={e => setEditingBranchValue(e.target.value)}
+                  onBlur={() => {
+                    if (editingBranchValue && editingBranchValue !== branch.name) {
+                      const newBranches = branches.map((b, i) => i === branchIdx ? { ...b, name: editingBranchValue } : b);
+                      updateBranches(newBranches);
+                    }
+                    setEditingBranchIdx(null);
+                  }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      if (editingBranchValue && editingBranchValue !== branch.name) {
+                        const newBranches = branches.map((b, i) => i === branchIdx ? { ...b, name: editingBranchValue } : b);
+                        updateBranches(newBranches);
+                      }
+                      setEditingBranchIdx(null);
+                    } else if (e.key === 'Escape') {
+                      setEditingBranchIdx(null);
+                    }
+                  }}
+                  autoFocus
+                  style={{ minWidth: 60 }}
+                />
+              ) : (
+                <span
+                  className="px-3 py-1 rounded-lg text-xs font-medium bg-[#DDF3F6] text-[#2B6476] inline-block cursor-pointer hover:ring-2 hover:ring-[#2B6476]"
+                  onClick={() => {
+                    setEditingBranchIdx(branchIdx);
+                    setEditingBranchValue(branch.name);
+                    setTimeout(() => inputRef.current?.focus(), 0);
+                  }}
+                  title="Click to rename branch"
+                >
+                  {branch.name}
+                </span>
+              )}
               <button
                 type="button"
                 className="ml-2 p-1 text-slate-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
@@ -161,14 +203,14 @@ export default function ConditionsModule({ branches: propBranches, onBranchesCha
                 }}
                 disabled={branches.length <= 1}
               >
-                <Trash2 className="w-4 h-4" />
+                <X className="w-4 h-4" />
               </button>
             </div>
           )}
           {branches.length > 1 && <div className="w-full h-px bg-[#D1D5DC] mb-3"></div>}
           <div className="text-slate-700 font-medium mb-1">If</div>
           {branch.groups.map((group: any, groupIdx: number) => (
-            <div key={groupIdx}>
+            <div key={groupIdx} className="relative group">
               {/* Render AND/OR between groups if not the first group */}
               {groupIdx > 0 && (
                 <div className="mb-2 relative inline-block" style={{ minWidth: 60, maxWidth: 60 }}>
@@ -184,6 +226,25 @@ export default function ConditionsModule({ branches: propBranches, onBranchesCha
                   </select>
                   <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600 pointer-events-none" />
                 </div>
+              )}
+              {/* Delete Condition (Group) X icon, appears on hover above the gray card */}
+              {branch.groups.length > 1 && (
+                <button
+                  type="button"
+                  className="absolute -top-0 right-0 p-1 text-slate-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100 z-10"
+                  title="Delete condition"
+                  onClick={() => {
+                    const newBranches = branches.map((b, bi) =>
+                      bi === branchIdx
+                        ? { ...b, groups: b.groups.filter((_: any, gi: number) => gi !== groupIdx) }
+                        : b
+                    );
+                    updateBranches(newBranches);
+                  }}
+                  style={{ background: 'none', border: 'none' }}
+                >
+                  <X className="w-4 h-4" />
+                </button>
               )}
               {/* Group logic dropdown inside gray card (for additional lines) */}
               <div className="bg-[#F8F9FB] rounded-xl p-4 mb-4">

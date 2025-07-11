@@ -426,9 +426,13 @@ function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePrevi
   const updateUIElement = (elementId: string, updates: Partial<UIElement>) => {
     setEditedTemplate({
       ...editedTemplate,
-      sidePanelElements: editedTemplate.sidePanelElements.map(el =>
-        el.id === elementId ? { ...el, ...updates } : el
-      )
+      sidePanelElements: editedTemplate.sidePanelElements.map(el => {
+        // If changing type to 'file-upload', pre-fill label
+        if (el.id === elementId && updates.type === 'file-upload') {
+          return { ...el, ...updates, label: 'Upload file' };
+        }
+        return el.id === elementId ? { ...el, ...updates } : el;
+      })
     });
   };
 
@@ -1167,7 +1171,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
               placeholder="Enter text content..."
             />
           </div>
-        ) : element.type !== 'section-divider' && element.type !== 'screening-questions' && element.type !== 'conditions-module' && element.type !== 'events-module' && (
+        ) : element.type !== 'section-divider' && element.type !== 'screening-questions' && element.type !== 'conditions-module' && element.type !== 'events-module' && element.type !== 'trigger-conditions-module' && (
           <div className={element.type === 'toggle' ? 'col-span-2' : ''}>
             <label className="block text-xs font-medium text-slate-600 mb-1">Label</label>
             <input
@@ -1179,7 +1183,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
             />
           </div>
         )}
-        {element.type !== 'section-divider' && element.type !== 'screening-questions' && element.type !== 'conditions-module' && element.type !== 'events-module' && element.type !== 'checkbox' && element.type !== 'button' && (
+        {element.type !== 'section-divider' && element.type !== 'screening-questions' && element.type !== 'conditions-module' && element.type !== 'events-module' && element.type !== 'checkbox' && element.type !== 'button' && element.type !== 'trigger-conditions-module' && element.type !== 'toggle' && element.type !== 'file-upload' && element.type !== 'radio' && element.type !== 'text-block' && (
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Placeholder</label>
             <input
@@ -1188,6 +1192,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
               onChange={(e) => onUpdate({ placeholder: e.target.value })}
               disabled={disabled}
               className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+              placeholder="Placeholder"
             />
           </div>
         )}
