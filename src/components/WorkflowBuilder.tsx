@@ -5,6 +5,7 @@ import { useApp } from '../context/AppContext';
 import { WorkflowNode, ActivityTemplate, UIElement, ConditionalFollowUp } from '../types';
 import { DynamicForm } from './DynamicForm';
 import ReactDOM from 'react-dom';
+import * as Lucide from 'lucide-react';
 
 const AVAILABLE_ICONS = [
   { name: 'Mail', component: Mail },
@@ -43,6 +44,95 @@ const ICON_COLORS = [
 function normalizeIconName(name: string): string {
   if (!name) return '';
   return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+// --- UI Element Type Dropdown with Previews (copied from ActivityConfigurator) ---
+const UI_ELEMENT_TYPES = [
+  { value: 'text', label: 'Text Input', icon: Lucide.Type, category: 'User inputs' },
+  { value: 'textarea', label: 'Textarea', icon: Lucide.AlignLeft, category: 'User inputs' },
+  { value: 'dropdown', label: 'Dropdown', icon: Lucide.ChevronDownSquare, category: 'User inputs' },
+  { value: 'radio', label: 'Radio Buttons', icon: Lucide.CircleDot, category: 'User inputs' },
+  { value: 'checkbox', label: 'Checkbox', icon: Lucide.CheckSquare, category: 'User inputs' },
+  { value: 'toggle', label: 'Toggle', icon: Lucide.ToggleLeft, category: 'User inputs' },
+  { value: 'file-upload', label: 'File Upload', icon: Lucide.UploadCloud, category: 'User inputs' },
+  { value: 'number', label: 'Numerical Input', icon: Lucide.ArrowDown10, category: 'User inputs' },
+  { value: 'date', label: 'Date Picker', icon: Lucide.Calendar, category: 'User inputs' },
+  { value: 'button', label: 'Button', icon: Lucide.MousePointer, category: 'User inputs' },
+  { value: 'section-divider', label: 'Section Divider', icon: Lucide.Minus, category: 'Layout' },
+  { value: 'text-block', label: 'Text Block', icon: Lucide.Text, category: 'Layout' },
+  { value: 'screening-questions', label: 'Screening Questions Module', icon: Lucide.ListChecks, category: 'Special activities' },
+  { value: 'conditions-module', label: 'Conditions Module', icon: Lucide.GitBranch, category: 'Special activities' },
+  { value: 'events-module', label: 'Events Module', icon: Lucide.Calendar, category: 'Special activities' },
+  { value: 'trigger-conditions-module', label: 'Trigger Conditions Module', icon: Lucide.Zap, category: 'Special activities' },
+];
+
+function UIElementTypeDropdown({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [open]);
+  const selected = UI_ELEMENT_TYPES.find(t => t.value === value);
+  // Group by category
+  const grouped: Record<string, typeof UI_ELEMENT_TYPES> = UI_ELEMENT_TYPES.reduce((acc: Record<string, typeof UI_ELEMENT_TYPES>, type) => {
+    if (!acc[type.category]) acc[type.category] = [];
+    acc[type.category].push(type);
+    return acc;
+  }, {});
+  return (
+    <div className="relative">
+      <button
+        ref={buttonRef}
+        type="button"
+        className={`flex items-center gap-2 px-3 py-1 border border-[#8C95A8] rounded-[10px] text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 ${open ? 'ring-2 ring-blue-500' : ''}`}
+        onClick={() => !disabled && setOpen(o => !o)}
+        disabled={disabled}
+      >
+        {selected ? <selected.icon className="w-4 h-4 text-slate-500" /> : <Lucide.HelpCircle className="w-4 h-4 text-slate-400" />}
+        <span>{selected ? selected.label : 'Select type'}</span>
+        <Lucide.ChevronDown className="w-4 h-4 ml-1 text-slate-400" />
+      </button>
+      {open && (
+        <div
+          ref={dropdownRef}
+          className="absolute left-0 mt-2 z-50 bg-white border border-slate-200 rounded-lg shadow-lg min-w-[320px] max-h-72 overflow-y-auto"
+        >
+          {Object.entries(grouped).map(([category, types]: [string, typeof UI_ELEMENT_TYPES]) => (
+            <div key={category} className="mb-1">
+              <div className="text-[10px] font-semibold text-[#8C95A8] uppercase tracking-wider px-3 py-1 bg-[#F5F7FA] rounded mb-1">{category}</div>
+              <div className="flex flex-col gap-0">
+                {types.map((type: typeof UI_ELEMENT_TYPES[number]) => (
+                  <button
+                    key={type.value}
+                    type="button"
+                    className={`flex items-center gap-3 w-full px-4 py-2 text-left text-[#464F5E] text-sm hover:bg-gray-50 ${value === type.value ? 'bg-[#F5F4FF] font-medium' : ''}`}
+                    onClick={() => { onChange(type.value as string); setOpen(false); }}
+                    disabled={disabled}
+                  >
+                    <type.icon className="w-4 h-4 text-slate-500" />
+                    <span>{type.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function WorkflowBuilder() {
@@ -457,20 +547,13 @@ export function WorkflowBuilder() {
   const processMapDescription = (description: string, node: WorkflowNode): string => {
     if (!description) return '';
 
-    // Check if all referenced values are available
-    if (!hasAllReferencedValues(description, node)) {
-      return ''; // Return empty string to hide description
-    }
-
-    // Replace #{ElementLabel} with actual values
+    // Replace #{ElementLabel} with actual values, or empty string if not filled
     return description.replace(/#{([^}]+)}/g, (match, elementLabel) => {
       // Find the element by label in the node's local elements
       const allElements = getAllUIElements(node.localSidePanelElements || []);
       const element = allElements.find(el => el.label === elementLabel);
-      
-      if (element && node.metadata && node.metadata[element.id] !== undefined) {
+      if (element && node.metadata && node.metadata[element.id] !== undefined && node.metadata[element.id] !== null && node.metadata[element.id] !== '') {
         const value = node.metadata[element.id];
-        
         // Format the value based on element type
         if (element.type === 'toggle') {
           return value ? 'ON' : 'OFF';
@@ -480,14 +563,13 @@ export function WorkflowBuilder() {
           if (value && typeof value === 'object' && value instanceof File) {
             return value.name;
           }
-          return value || 'No file selected';
+          return value || '';
         } else {
-          return String(value || '');
+          return String(value);
         }
       }
-      
-      // If no value found, return the placeholder (this shouldn't happen due to hasAllReferencedValues check)
-      return `[${elementLabel}]`;
+      // If no value found, return empty string
+      return '';
     });
   };
 
@@ -1206,7 +1288,19 @@ export function WorkflowBuilder() {
                     </div>
                     <h3 className="font-medium text-[#353B46] text-[14px] mb-0">Trigger</h3>
                   </div>
-                  <p className="text-[10px] text-[#637085] leading-relaxed mt-2">Workflow starts here</p>
+                  <p className="text-[10px] text-[#637085] leading-relaxed mt-2">
+                    {processMapDescription(
+                      triggerTemplate?.description || '',
+                      {
+                        id: 'trigger',
+                        activityTemplateId: triggerTemplate?.id || '',
+                        position: { x: 0, y: 0 },
+                        userAssignedName: 'Trigger',
+                        localSidePanelElements: triggerTemplate?.sidePanelElements || [],
+                        metadata: workflow.triggerMetadata || {}
+                      }
+                    )}
+                  </p>
                 </div>
               </div>
               <div className="flex justify-center mb-0">
@@ -1591,7 +1685,7 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
               type="text"
               value={node.userAssignedName || template.name}
               onChange={(e) => onUpdate({ userAssignedName: e.target.value })}
-              className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-1 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter activity name"
             />
           </div>
@@ -1604,18 +1698,19 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
             <textarea
               value={node.sidePanelDescription || template.sidePanelDescription || ''}
               onChange={(e) => onUpdate({ sidePanelDescription: e.target.value })}
-              className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-1 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               rows={2}
               placeholder="Description shown in the side panel"
             />
           </div>
 
           {!isConditionNode && (
-            <div>
+           <div className="py-1">
               <label className="block text-sm font-medium text-slate-700 mb-2">
                 Map Description
               </label>
               <MapDescriptionInput
+              
                 value={node.mapDescription || template.description || ''}
                 onChange={(value) => onUpdate({ mapDescription: value })}
                 uiElements={currentElements}
@@ -1922,13 +2017,13 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove }: WorkflowUIElem
   return (
     <div className="p-3 border border-slate-200 rounded-lg bg-slate-50">
       <div className="flex items-center justify-between mb-3">
-        <select
+        <UIElementTypeDropdown
           value={element.type}
-          onChange={(e) => {
-            const newType = e.target.value as UIElement['type'];
-            if (newType === 'events-module' && (!element.events || element.events.length === 0)) {
+          onChange={(newType) => {
+            const castType = newType as UIElement['type'];
+            if (castType === 'events-module' && (!element.events || element.events.length === 0)) {
               onUpdate(element.id, {
-                type: newType,
+                type: castType,
                 events: [
                   { title: 'The Dream Career Conference', subtitle: 'High Volume Hiring', tag: 'Upcoming' },
                   { title: 'Technical Professionals Meetup', subtitle: 'High Volume Hiring', tag: 'Upcoming' },
@@ -1937,24 +2032,14 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove }: WorkflowUIElem
                 label: ''
               });
             } else {
-              onUpdate(element.id, { type: newType });
+              onUpdate(element.id, { type: castType });
             }
           }}
-          className="px-3 py-1 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        >
-          <option value="text">Text Input</option>
-          <option value="textarea">Textarea</option>
-          <option value="dropdown">Dropdown</option>
-          <option value="radio">Radio Buttons</option>
-          <option value="checkbox">Checkbox</option>
-          <option value="toggle">Toggle</option>
-          <option value="button">Button</option>
-          <option value="file-upload">File Upload</option>
-          <option value="section-divider">Section Divider</option>
-          <option value="text-block">Text Block</option>
-          <option value="date">Date Picker</option>
-          <option value="events-module">Events Module</option>
-        </select>
+          disabled={false}
+        />
+        <div className="flex items-center space-x-1">
+          {/* Move up/down buttons (optional, for future parity) */}
+        </div>
         <button
           onClick={() => onRemove(element.id)}
           className="p-1 text-red-600 hover:text-red-700 transition-colors"
@@ -1963,314 +2048,346 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove }: WorkflowUIElem
           <X className="w-4 h-4" />
         </button>
       </div>
-
-      <div className="grid grid-cols-1 gap-3 mb-3">
-        {/* Hide label/placeholder for events-module, show events editor UI */}
-        {element.type !== 'section-divider' && element.type !== 'events-module' && (
-          <div>
+      {/* Now, for each field, match the logic and classes from ActivityConfigurator's UIElementEditor. */}
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        {element.type === 'text-block' ? (
+          <div className="col-span-2 mb-3">
+            <label className="block text-xs font-medium text-slate-600 mb-1">Text Content</label>
+            <textarea
+              value={element.text || element.label}
+              onChange={e => onUpdate(element.id, { text: e.target.value, label: e.target.value })}
+              className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              rows={4}
+              placeholder="Enter text content..."
+            />
+          </div>
+        ) : element.type !== 'section-divider' && element.type !== 'screening-questions' && element.type !== 'conditions-module' && element.type !== 'events-module' && (
+          <div className={element.type === 'toggle' ? 'col-span-2' : ''}>
             <label className="block text-xs font-medium text-slate-600 mb-1">Label</label>
             <input
               type="text"
               value={element.label}
-              onChange={(e) => onUpdate(element.id, { label: e.target.value })}
-              className="w-full px-2 py-1 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              onChange={e => onUpdate(element.id, { label: e.target.value })}
+              className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
         )}
-        {element.type !== 'section-divider' && element.type !== 'text-block' && element.type !== 'number' && element.type !== 'date' && element.type !== 'radio' && element.type !== 'toggle' && element.type !== 'events-module' && (
+        {element.type !== 'section-divider' && element.type !== 'screening-questions' && element.type !== 'conditions-module' && element.type !== 'events-module' && element.type !== 'checkbox' && element.type !== 'button' && (
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Placeholder</label>
             <input
               type="text"
               value={element.placeholder || ''}
-              onChange={(e) => onUpdate(element.id, { placeholder: e.target.value })}
-              className="w-full px-2 py-1 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              onChange={e => onUpdate(element.id, { placeholder: e.target.value })}
+              className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
         )}
-        {/* Events Module Editor */}
-        {element.type === 'events-module' && (
-          <div className="mb-3">
-            <label className="block text-xs font-medium text-slate-600 mb-1">Events</label>
-            <div className="space-y-3">
-              {(element.events || []).map((event, idx) => (
-                <div key={idx} className="border rounded-lg p-3 bg-slate-50 flex flex-col gap-2 relative">
-                  <button
-                    type="button"
-                    className="absolute top-2 right-2 text-slate-400 hover:text-red-500 p-1"
-                    onClick={() => {
-                      const newEvents = [...(element.events || [])];
-                      newEvents.splice(idx, 1);
-                      onUpdate(element.id, { events: newEvents });
-                    }}
-                    tabIndex={-1}
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                  <input
-                    type="text"
-                    className="w-full px-2 py-1 border border-slate-300 rounded text-sm mb-1"
-                    placeholder="Event title"
-                    value={event.title}
-                    onChange={e => {
-                      const newEvents = [...(element.events || [])];
-                      newEvents[idx] = { ...event, title: e.target.value };
-                      onUpdate(element.id, { events: newEvents });
-                    }}
-                  />
-                  <input
-                    type="text"
-                    className="w-full px-2 py-1 border border-slate-300 rounded text-sm mb-1"
-                    placeholder="Event subtitle"
-                    value={event.subtitle}
-                    onChange={e => {
-                      const newEvents = [...(element.events || [])];
-                      newEvents[idx] = { ...event, subtitle: e.target.value };
-                      onUpdate(element.id, { events: newEvents });
-                    }}
-                  />
-                  <input
-                    type="text"
-                    className="w-full px-2 py-1 border border-slate-300 rounded text-sm"
-                    placeholder="Event tag"
-                    value={event.tag}
-                    onChange={e => {
-                      const newEvents = [...(element.events || [])];
-                      newEvents[idx] = { ...event, tag: e.target.value };
-                      onUpdate(element.id, { events: newEvents });
-                    }}
-                  />
-                </div>
-              ))}
-              <button
-                type="button"
-                className="mt-2 px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
-                onClick={() => {
-                  const newEvents = [...(element.events || []), { title: '', subtitle: '', tag: '' }];
-                  onUpdate(element.id, { events: newEvents });
-                }}
-              >
-                + Add Event
-              </button>
-            </div>
+        {element.type === 'date' && (
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Placeholder</label>
+            <input
+              type="text"
+              value={element.placeholder || ''}
+              onChange={e => onUpdate(element.id, { placeholder: e.target.value })}
+              className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="e.g. Select a date"
+            />
           </div>
         )}
       </div>
-
-      {(element.type === 'dropdown' || element.type === 'radio') && (
+      {/* Default text for text and textarea */}
+      {['text', 'textarea'].includes(element.type) && (
         <div className="mb-3">
-          <label className="block text-xs font-medium text-slate-600 mb-1">Options (comma-separated)</label>
+          <label className="block text-xs font-medium text-slate-600 mb-1">Default Text</label>
           <input
             type="text"
-            value={element.options?.join(', ') || ''}
-            onChange={(e) => {
-              const options = e.target.value.split(',').map(opt => opt.trim()).filter(opt => opt);
-              onUpdate(element.id, { options });
-            }}
-            className="w-full px-2 py-1 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="Option 1, Option 2, Option 3"
+            value={typeof element.defaultValue === 'string' ? element.defaultValue : ''}
+            onChange={e => onUpdate(element.id, { defaultValue: e.target.value })}
+            className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Optional default text"
           />
-          {/* Default option selector */}
-          <div className="mt-2">
-            <label className="block text-xs font-medium text-slate-600 mb-1">Default Selected Option</label>
-            <select
-              value={typeof element.defaultValue === 'string' ? element.defaultValue : ''}
-              onChange={e => onUpdate(element.id, { defaultValue: e.target.value || undefined })}
-              disabled={!element.options || element.options.length === 0}
-              className="w-full px-2 py-1 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        </div>
+      )}
+      {/* Half-size input checkbox for text, dropdown, date, number */}
+      {['text', 'dropdown', 'date', 'number'].includes(element.type) && (
+        <div className="flex items-center mb-3">
+          <input
+            type="checkbox"
+            id={`half-size-${element.id}`}
+            checked={element.halfSize || false}
+            onChange={e => onUpdate(element.id, { halfSize: e.target.checked })}
+            className="mr-2"
+          />
+          <label htmlFor={`half-size-${element.id}`} className="text-xs text-slate-600">
+            Half-size input
+          </label>
+        </div>
+      )}
+      {/* Options for dropdown, radio, checkbox */}
+      {(element.type === 'dropdown' || element.type === 'radio' || element.type === 'checkbox') && (
+        <div className="mb-3">
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-xs font-medium text-slate-600">Options</label>
+            <button
+              type="button"
+              onClick={() => {
+                const currentOptions = element.options || [];
+                onUpdate(element.id, { options: [...currentOptions, ''] });
+              }}
+              className="flex items-center space-x-1 px-2 py-1 bg-[#4D3EE0] text-white rounded-lg text-xs hover:bg-[#2927B2] transition-colors"
             >
-              <option value="">None</option>
-              {element.options && element.options.map((option, idx) => (
-                <option key={idx} value={option}>{option}</option>
-              ))}
-            </select>
+              <Plus className="w-3 h-3" />
+              <span>Add</span>
+            </button>
           </div>
-        </div>
-      )}
-
-      {/* <div className="flex items-center mb-3">
-        <input
-          type="checkbox"
-          id={`required-${element.id}`}
-          checked={element.required || false}
-          onChange={(e) => onUpdate(element.id, { required: e.target.checked })}
-          className="mr-2"
-        />
-        <label htmlFor={`required-${element.id}`} className="text-xs text-slate-600">
-          Required field
-        </label>
-      </div> */}
-
-      {element.type === 'date' && (
-        <div className="mb-3 grid grid-cols-3 gap-2">
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Default Value</label>
-            <input
-              type="date"
-              value={typeof element.defaultValue === 'string' ? element.defaultValue : ''}
-              onChange={e => onUpdate(element.id, { defaultValue: e.target.value })}
-              className="w-full px-2 py-1 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="YYYY-MM-DD"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Min</label>
-            <input
-              type="date"
-              value={typeof element.min === 'string' ? element.min : ''}
-              onChange={e => onUpdate(element.id, { min: e.target.value })}
-              className="w-full px-2 py-1 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="YYYY-MM-DD"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Max</label>
-            <input
-              type="date"
-              value={typeof element.max === 'string' ? element.max : ''}
-              onChange={e => onUpdate(element.id, { max: e.target.value })}
-              className="w-full px-2 py-1 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="YYYY-MM-DD"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Step (days)</label>
-            <input
-              type="number"
-              value={element.step ?? ''}
-              onChange={e => onUpdate(element.id, { step: e.target.value === '' ? undefined : Number(e.target.value) })}
-              className="w-full px-2 py-1 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Step"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Conditional follow-up elements configuration */}
-      {canHaveConditionalFollowUps && (
-        <div className="border-t pt-3 mt-3">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id={`conditional-followup-${element.id}`}
-                checked={element.hasConditionalFollowUps || false}
-                onChange={(e) => {
-                  onUpdate(element.id, { 
-                    hasConditionalFollowUps: e.target.checked,
-                    conditionalFollowUps: e.target.checked ? (element.conditionalFollowUps || []) : []
-                  });
-                }}
-                className="mr-2"
-              />
-              <label htmlFor={`conditional-followup-${element.id}`} className="text-xs text-slate-600">
-                Has follow-up elements
-              </label>
-            </div>
-            {element.hasConditionalFollowUps && (
-              <button
-                onClick={addConditionalFollowUp}
-                className="flex items-center space-x-1 px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 transition-colors"
-              >
-                <Plus className="w-3 h-3" />
-                <span>Add Condition</span>
-              </button>
+          <div className="space-y-2">
+            {(element.options || []).map((option, index) => (
+              <div key={index} className="relative">
+                <input
+                  type="text"
+                  value={option}
+                  onChange={e => {
+                    const newOptions = [...(element.options || [])];
+                    newOptions[index] = e.target.value;
+                    onUpdate(element.id, { options: newOptions });
+                  }}
+                  className="w-full pr-8 px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder={`Option ${index + 1}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newOptions = (element.options || []).filter((_, i) => i !== index);
+                    onUpdate(element.id, { options: newOptions });
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                  tabIndex={-1}
+                  aria-label="Remove option"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+            {(!element.options || element.options.length === 0) && (
+              <div className="text-center py-3 border-2 border-dashed border-slate-300 rounded text-xs text-slate-500">
+                No options added yet. Click "Add" to create your first option.
+              </div>
             )}
           </div>
-
-          {element.hasConditionalFollowUps && (
-            <div className="space-y-4">
-              {(element.conditionalFollowUps || []).map((followUp, followUpIndex) => (
-                <div key={followUpIndex} className="p-3 border border-slate-300 rounded-lg bg-white">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center space-x-2">
-                      <label className="text-xs font-medium text-slate-600">
-                        When value is:
-                      </label>
-                      {element.type === 'toggle' ? (
-                        <select
-                          value={followUp.conditionValue === true ? 'true' : 'false'}
-                          onChange={(e) => updateConditionalFollowUp(followUpIndex, {
-                            conditionValue: e.target.value === 'true'
-                          })}
-                          className="px-2 py-1 border border-slate-300 rounded-[10px] text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="true">ON</option>
-                          <option value="false">OFF</option>
-                        </select>
-                      ) : element.type === 'checkbox' ? (
-                        <select
-                          value={followUp.conditionValue === true ? 'true' : 'false'}
-                          onChange={(e) => updateConditionalFollowUp(followUpIndex, {
-                            conditionValue: e.target.value === 'true'
-                          })}
-                          className="px-2 py-1 border border-slate-300 rounded-[10px] text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="true">Checked</option>
-                          <option value="false">Unchecked</option>
-                        </select>
-                      ) : (
-                        <select
-                          value={followUp.conditionValue as string}
-                          onChange={(e) => updateConditionalFollowUp(followUpIndex, {
-                            conditionValue: e.target.value
-                          })}
-                          className="px-2 py-1 border border-slate-300 rounded-[10px] text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="">Select option...</option>
-                          {element.options?.map((option) => (
-                            <option key={option} value={option}>
-                              {option}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => removeConditionalFollowUp(followUpIndex)}
-                      className="p-1 text-red-600 hover:text-red-700 transition-colors"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="block text-xs font-medium text-slate-600">Follow-up Elements</label>
-                      <button
-                        onClick={() => addElementToConditionalFollowUp(followUpIndex)}
-                        className="flex items-center space-x-1 px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors"
-                      >
-                        <Plus className="w-3 h-3" />
-                        <span>Add Element</span>
-                      </button>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      {followUp.elements.map((followUpElement) => (
-                        <WorkflowUIElementEditor
-                          key={followUpElement.id}
-                          element={followUpElement}
-                          onUpdate={(elementId, updates) => updateElementInConditionalFollowUp(followUpIndex, elementId, updates)}
-                          onRemove={(elementId) => removeElementFromConditionalFollowUp(followUpIndex, elementId)}
-                        />
-                      ))}
-                      {followUp.elements.length === 0 && (
-                        <div className="text-center py-3 border-2 border-dashed border-slate-300 rounded text-xs text-slate-500">
-                          No follow-up elements added yet.
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {(!element.conditionalFollowUps || element.conditionalFollowUps.length === 0) && (
-                <div className="text-center py-3 border-2 border-dashed border-slate-300 rounded text-xs text-slate-500">
-                  No conditional follow-ups configured yet.
-                </div>
-              )}
+          {/* Default option selector for dropdown and radio */}
+          {(element.type === 'dropdown' || element.type === 'radio') && (
+            <div className="mt-2">
+              <label className="block text-xs font-medium text-slate-600 mb-1">Default Selected Option</label>
+              <select
+                value={typeof element.defaultValue === 'string' ? element.defaultValue : ''}
+                onChange={e => onUpdate(element.id, { defaultValue: e.target.value || undefined })}
+                disabled={!element.options || element.options.length === 0}
+                className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">None</option>
+                {element.options && element.options.map((option, idx) => (
+                  <option key={idx} value={option}>{option}</option>
+                ))}
+              </select>
             </div>
           )}
+        </div>
+      )}
+      {/* Multiselect for dropdown */}
+      {element.type === 'dropdown' && (
+        <div className="mb-3">
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id={`multiselect-${element.id}`}
+              checked={element.multiselect || false}
+              onChange={e => onUpdate(element.id, { multiselect: e.target.checked })}
+              className="mr-2"
+            />
+            <label htmlFor={`multiselect-${element.id}`} className="text-xs text-slate-600">
+              Allow multiple selections
+            </label>
+          </div>
+        </div>
+      )}
+      {/* Button-specific configurations */}
+      {element.type === 'button' && (
+        <div className="space-y-3 mb-3">
+          {/* Has title checkbox */}
+          <div className="flex items-center mb-2">
+            <input
+              type="checkbox"
+              id={`has-title-${element.id}`}
+              checked={!!element.hasTitle}
+              onChange={e => onUpdate(element.id, { hasTitle: e.target.checked })}
+              className="mr-2"
+            />
+            <label htmlFor={`has-title-${element.id}`} className="text-xs text-slate-600">
+              Has title
+            </label>
+          </div>
+          {/* Title input */}
+          {element.hasTitle && (
+            <div className="mb-2">
+              <label className="block text-xs font-medium text-slate-600 mb-1">Title</label>
+              <input
+                type="text"
+                value={element.title || ''}
+                onChange={e => onUpdate(element.id, { title: e.target.value })}
+                className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Button title"
+              />
+            </div>
+          )}
+          {/* Has Icon checkbox */}
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id={`has-icon-${element.id}`}
+              checked={element.hasIcon || false}
+              onChange={e => onUpdate(element.id, { hasIcon: e.target.checked })}
+              className="mr-2"
+            />
+            <label htmlFor={`has-icon-${element.id}`} className="text-xs text-slate-600">
+              Has icon
+            </label>
+          </div>
+          {/* Icon selection and position */}
+          {element.hasIcon && (
+            <div className="space-y-3 ml-4  rounded-lg">
+              <div>
+                <div className="flex flex-wrap gap-1">
+                  {AVAILABLE_ICONS.map((iconOption) => {
+                    const IconComponent = iconOption.component;
+                    const isSelected = element.icon === iconOption.name;
+                    return (
+                      <button
+                        key={iconOption.name}
+                        type="button"
+                        onClick={() => onUpdate(element.id, { icon: normalizeIconName(iconOption.name) })}
+                        className={`p-1 rounded border bg-white transition-all duration-200 ${
+                          isSelected
+                            ? 'border-[#4D3EE0] bg-blue-50'
+                            : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <IconComponent className="w-4 h-4 mx-auto" style={{ color: '#4D3EE0' }} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-2">Icon Position</label>
+                <div className="flex space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => onUpdate(element.id, { iconPosition: 'left' })}
+                    className={`px-3 py-1 rounded-md text-xs transition-colors ${
+                      (element.iconPosition || 'left') === 'left'
+                        ? 'bg-blue-50 text-slate-800  border border-[#4D3EE0]'
+                        : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-200'
+                    }`}
+                  >
+                    Left
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onUpdate(element.id, { iconPosition: 'right' })}
+                    className={`px-3 py-1 rounded-md text-xs transition-colors ${
+                      element.iconPosition === 'right'
+                        ? 'bg-blue-50 text-slate-800 border border-[#4D3EE0]'
+                        : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-200'
+                    }`}
+                  >
+                    Right
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {/* Section title for section-divider */}
+      {element.type === 'section-divider' && (
+        <div className="mb-3">
+          <label className="block text-xs font-medium text-slate-600 mb-1">Section Title</label>
+          <input
+            type="text"
+            value={element.text || element.label}
+            onChange={e => onUpdate(element.id, { text: e.target.value, label: e.target.value })}
+            className="w-full px-2 py-1 border border-slate-300 rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Section title (optional)"
+          />
+          <div className="text-xs text-slate-500 mt-1">Leave empty if you just want a divider line</div>
+        </div>
+      )}
+      {/* Events Module Editor */}
+      {element.type === 'events-module' && (
+        <div className="mb-3">
+          <label className="block text-xs font-medium text-slate-600 mb-1">Events</label>
+          <div className="space-y-3">
+            {(element.events || []).map((event, idx) => (
+              <div key={idx} className="border rounded-lg p-3 bg-slate-50 flex flex-col gap-2 relative">
+                <button
+                  type="button"
+                  className="absolute top-2 right-2 text-slate-400 hover:text-red-500 p-1"
+                  onClick={() => {
+                    const newEvents = [...(element.events || [])];
+                    newEvents.splice(idx, 1);
+                    onUpdate(element.id, { events: newEvents });
+                  }}
+                  tabIndex={-1}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                <input
+                  type="text"
+                  className="w-full px-2 py-1 border border-slate-300 rounded text-sm mb-1"
+                  placeholder="Event title"
+                  value={event.title}
+                  onChange={e => {
+                    const newEvents = [...(element.events || [])];
+                    newEvents[idx] = { ...event, title: e.target.value };
+                    onUpdate(element.id, { events: newEvents });
+                  }}
+                />
+                <input
+                  type="text"
+                  className="w-full px-2 py-1 border border-slate-300 rounded text-sm mb-1"
+                  placeholder="Event subtitle"
+                  value={event.subtitle}
+                  onChange={e => {
+                    const newEvents = [...(element.events || [])];
+                    newEvents[idx] = { ...event, subtitle: e.target.value };
+                    onUpdate(element.id, { events: newEvents });
+                  }}
+                />
+                <input
+                  type="text"
+                  className="w-full px-2 py-1 border border-slate-300 rounded text-sm"
+                  placeholder="Event tag"
+                  value={event.tag}
+                  onChange={e => {
+                    const newEvents = [...(element.events || [])];
+                    newEvents[idx] = { ...event, tag: e.target.value };
+                    onUpdate(element.id, { events: newEvents });
+                  }}
+                />
+              </div>
+            ))}
+            <button
+              type="button"
+              className="mt-2 px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+              onClick={() => {
+                const newEvents = [...(element.events || []), { title: '', subtitle: '', tag: '' }];
+                onUpdate(element.id, { events: newEvents });
+              }}
+            >
+              + Add Event
+            </button>
+          </div>
         </div>
       )}
     </div>

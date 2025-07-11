@@ -514,11 +514,22 @@ function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePrevi
       {previewMode ? (
         <div className="space-y-4">
           <h4 className="font-medium text-slate-900">Preview Mode</h4>
-          <DynamicForm
-            elements={editedTemplate.sidePanelElements}
-            values={previewValues}
-            onChange={setPreviewValues}
-          />
+          {(() => {
+            // Build values with defaultValue for radio and dropdown if not already set
+            const defaultedValues = { ...previewValues };
+            editedTemplate.sidePanelElements.forEach(el => {
+              if ((el.type === 'radio' || el.type === 'dropdown') && typeof el.defaultValue === 'string' && el.defaultValue !== '' && defaultedValues[el.id] === undefined) {
+                defaultedValues[el.id] = el.defaultValue;
+              }
+            });
+            return (
+              <DynamicForm
+                elements={editedTemplate.sidePanelElements}
+                values={defaultedValues}
+                onChange={setPreviewValues}
+              />
+            );
+          })()}
         </div>
       ) : (
         <div className="space-y-4">
@@ -531,7 +542,7 @@ function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePrevi
                 value={editedTemplate.name}
                 onChange={(e) => setEditedTemplate({ ...editedTemplate, name: e.target.value })}
                 disabled={loading}
-                className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+                className="w-full px-3 py-1 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
               />
             </div>
             <div className="relative">
@@ -543,7 +554,7 @@ function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePrevi
                 onFocus={() => setShowCategoryDropdown(true)}
                 onBlur={() => setTimeout(() => setShowCategoryDropdown(false), 150)}
                 disabled={loading}
-                className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+                className="w-full px-3 py-1 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
                 placeholder="Enter or select a category"
                 autoComplete="off"
               />
@@ -564,7 +575,7 @@ function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePrevi
                         <button
                           key="add-new"
                           type="button"
-                          className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm font-medium text-[#2927B2] border-b border-slate-100"
+                          className="w-full text-left px-3 py-1 hover:bg-blue-50 text-sm font-medium text-[#2927B2] border-b border-slate-100"
                           onMouseDown={() => {
                             setCategoryInput(categoryInput);
                             setEditedTemplate({ ...editedTemplate, category: categoryInput });
@@ -580,7 +591,7 @@ function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePrevi
                         <button
                           key={cat}
                           type="button"
-                          className={`w-full text-left px-3 py-2 hover:bg-slate-100 text-sm ${cat === categoryInput ? 'bg-blue-50 font-semibold' : ''}`}
+                          className={`w-full text-left px-3 py-1 hover:bg-slate-100 text-sm ${cat === categoryInput ? 'bg-blue-50 font-semibold' : ''}`}
                           onMouseDown={() => {
                             setCategoryInput(cat);
                             setEditedTemplate({ ...editedTemplate, category: cat });
@@ -602,7 +613,7 @@ function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePrevi
                 value={editedTemplate.sidePanelDescription || ''}
                 onChange={(e) => setEditedTemplate({ ...editedTemplate, sidePanelDescription: e.target.value })}
                 disabled={loading}
-                className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+                className="w-full px-3 py-1 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
                 rows={2}
                 placeholder="Description shown in the side panel"
               />
@@ -784,14 +795,14 @@ function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePrevi
         <button
           onClick={onCancel}
           disabled={loading}
-          className="px-4 py-2 text-slate-600 hover:text-slate-800 transition-colors disabled:opacity-50"
+          className="px-4 py-2 text-slate-600 text-sm hover:text-slate-800 transition-colors disabled:opacity-50"
         >
           Cancel
         </button>
         <button
           onClick={handleSave}
           disabled={loading}
-          className="px-4 py-2 bg-[#4D3EE0] text-white rounded-lg hover:bg-[#2927B2]  flex items-center space-x-2 disabled:opacity-50"
+          className="px-4 py-1 bg-[#4D3EE0] text-white text-sm rounded-xl hover:bg-[#2927B2]  flex items-center space-x-2 disabled:opacity-50"
         >
           <span>Save changes</span>
         </button>
@@ -1168,7 +1179,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
             />
           </div>
         )}
-        {element.type !== 'section-divider' && element.type !== 'text-block' && element.type !== 'number' && element.type !== 'date' && element.type !== 'radio' && element.type !== 'toggle' && element.type !== 'screening-questions' && element.type !== 'conditions-module' && element.type !== 'events-module' && (
+        {element.type !== 'section-divider' && element.type !== 'screening-questions' && element.type !== 'conditions-module' && element.type !== 'events-module' && element.type !== 'checkbox' && element.type !== 'button' && (
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Placeholder</label>
             <input
@@ -1233,7 +1244,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
             <button
               onClick={addOption}
               disabled={disabled}
-              className="flex items-center space-x-1 px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className="flex items-center space-x-1 px-2 py-1 bg-[#4D3EE0] text-white rounded-lg text-xs hover:bg-[#2927B2] transition-colors disabled:opacity-50"
             >
               <Plus className="w-3 h-3" />
               <span>Add</span>
@@ -1241,21 +1252,24 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
           </div>
           <div className="space-y-2">
             {(element.options || []).map((option, index) => (
-              <div key={index} className="flex items-center space-x-2">
+              <div key={index} className="relative">
                 <input
                   type="text"
                   value={option}
                   onChange={(e) => updateOption(index, e.target.value)}
                   disabled={disabled}
-                  className="flex-1 px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+                  className="w-full pr-8 px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
                   placeholder={`Option ${index + 1}`}
                 />
                 <button
+                  type="button"
                   onClick={() => removeOption(index)}
                   disabled={disabled}
-                  className="p-1 text-red-600 hover:text-red-700 transition-colors disabled:opacity-50"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50 focus:outline-none"
+                  tabIndex={-1}
+                  aria-label="Remove option"
                 >
-                  <X className="w-3 h-3" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             ))}
@@ -1266,20 +1280,22 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
             )}
           </div>
           {/* Default option selector */}
-          <div className="mt-2">
-            <label className="block text-xs font-medium text-slate-600 mb-1">Default Selected Option</label>
-            <select
-              value={typeof element.defaultValue === 'string' ? element.defaultValue : ''}
-              onChange={e => onUpdate({ defaultValue: e.target.value || undefined })}
-              disabled={disabled || !element.options || element.options.length === 0}
-              className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
-            >
-              <option value="">None</option>
-              {element.options && element.options.map((option, idx) => (
-                <option key={idx} value={option}>{option}</option>
-              ))}
-            </select>
-          </div>
+          {(element.type === 'dropdown' || element.type === 'radio') && (
+            <div className="mt-2">
+              <label className="block text-xs font-medium text-slate-600 mb-1">Default Selected Option</label>
+              <select
+                value={typeof element.defaultValue === 'string' ? element.defaultValue : ''}
+                onChange={e => onUpdate({ defaultValue: e.target.value || undefined })}
+                disabled={disabled || !element.options || element.options.length === 0}
+                className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+              >
+                <option value="">None</option>
+                {element.options && element.options.map((option, idx) => (
+                  <option key={idx} value={option}>{option}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
       )}
 
@@ -1556,10 +1572,10 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
               <button
                 onClick={addConditionalFollowUp}
                 disabled={disabled}
-                className="flex items-center space-x-1 px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 transition-colors disabled:opacity-50"
+                className="flex items-center space-x-1 px-2 py-1 bg-[#4D3EE0] text-white rounded-lg text-xs hover:bg-[#2927B2] transition-colors disabled:opacity-50"
               >
                 <Plus className="w-3 h-3" />
-                <span>Add Condition</span>
+                <span>Add condition</span>
               </button>
             )}
           </div>
@@ -1630,7 +1646,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
                       <button
                         onClick={() => addElementToConditionalFollowUp(followUpIndex)}
                         disabled={disabled}
-                        className="flex items-center space-x-1 px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 transition-colors disabled:opacity-50"
+                        className="flex items-center space-x-1 px-2 py-1 bg-[#4D3EE0] text-white rounded-lg text-xs hover:bg-[#2927B2]transition-colors disabled:opacity-50"
                       >
                         <Plus className="w-3 h-3" />
                         <span>Add Element</span>
