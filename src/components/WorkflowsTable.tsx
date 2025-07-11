@@ -151,13 +151,13 @@ export function WorkflowsTable() {
                     className="rounded border-slate-300"
                   />
                 </th>
-                <th className="text-left py-2 px-6 text-sm font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Name</th>
-                <th className="text-left py-2 px-6 text-sm font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Status</th>
-                <th className="text-left py-2 px-6 text-sm font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Channel</th>
-                <th className="text-left py-2 px-6 text-sm font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Version</th>
-                <th className="text-left py-2 px-6 text-sm font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Locale</th>
-                <th className="text-left py-2 px-6 text-sm font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Modified</th>
-                <th className="text-left py-2 px-6 text-sm font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Set Live</th>
+                <th className="text-left py-2 px-6 text-[13px] font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Name</th>
+                <th className="text-left py-2 px-6 text-[13px] font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Status</th>
+                <th className="text-left py-2 px-6 text-[13px] font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Channel</th>
+                <th className="text-left py-2 px-6 text-[13px] font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Version</th>
+                <th className="text-left py-2 px-6 text-[13px] font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Locale</th>
+                <th className="text-left py-2 px-6 text-[13px] font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Modified</th>
+                <th className="text-left py-2 px-6 text-[13px] font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Set Live</th>
                 <th className="w-12 bg-[#F8F9FB] border-l border-l-[#D1D5DC]" style={{ borderTopRightRadius: '10px' }}></th>
 
               </tr>

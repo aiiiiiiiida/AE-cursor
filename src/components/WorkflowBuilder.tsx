@@ -544,6 +544,80 @@ export function WorkflowBuilder() {
     return workflow.nodes.filter(node => isConditionNode(node));
   };
 
+  // --- Helper: Get property/operator labels for conditions summary ---
+  const PROPERTY_OPTIONS = [
+    { label: 'Job ID', value: 'jobID' },
+    { label: 'Department', value: 'department' },
+    { label: 'Country', value: 'country' },
+    { label: 'Profile skills', value: 'profileSkills' },
+    { label: 'City', value: 'city' },
+  ];
+  const OPERATOR_OPTIONS = [
+    { label: 'is', value: 'is' },
+    { label: 'is not', value: 'is_not' },
+    { label: 'contains', value: 'contains' },
+  ];
+  function getPropertyLabel(value: string) {
+    return PROPERTY_OPTIONS.find(p => p.value === value)?.label || value;
+  }
+  function getOperatorLabel(value: string) {
+    return OPERATOR_OPTIONS.find(o => o.value === value)?.label || value;
+  }
+  // --- Branch summary for Condition nodes ---
+  function getConditionBranchSummary(node: WorkflowNode): string {
+    // Find the first conditions-module element
+    const condEl = (node.localSidePanelElements || []).find(el => el.type === 'conditions-module');
+    if (!condEl) return 'No conditions configured';
+    const condId = condEl.id;
+    const condData = node.metadata?.[condId];
+    const branches = condData?.branches || [];
+    if (!Array.isArray(branches) || branches.length === 0) return 'No branches defined';
+    return branches.map((branch: any) => {
+      const branchName = branch.name || 'Branch';
+      const groups = branch.groups || [];
+      if (!Array.isArray(groups) || groups.length === 0) return `${branchName}: No condition set`;
+      // For each group, handle property/operator inheritance
+      const groupSummaries = groups.map((group: any) => {
+        const lines = Array.isArray(group?.lines) ? group.lines : [];
+        if (!lines.length) return '';
+        // Inherit property/operator from previous line if missing
+        let lastProp = '';
+        let lastOp = '';
+        const effectiveLines = lines.map((l: any) => {
+          if (l.property) lastProp = l.property;
+          if (l.operator) lastOp = l.operator;
+          return { property: lastProp, operator: lastOp, value: l.value };
+        });
+        // Group by property+operator
+        const grouped: Record<string, { property: string, operator: string, values: string[] }> = {};
+        effectiveLines.filter((l: any) => l.property && l.value).forEach((line: any) => {
+          const key = `${line.property}__${line.operator}`;
+          if (!grouped[key]) {
+            grouped[key] = {
+              property: line.property,
+              operator: line.operator,
+              values: []
+            };
+          }
+          grouped[key].values.push(line.value);
+        });
+        const logic = group.groupLogic?.toUpperCase() || 'AND';
+        const summaries = Object.values(grouped).map(g => {
+          if (g.values.length === 1) {
+            return `${getPropertyLabel(g.property)} ${getOperatorLabel(g.operator)} ${g.values[0]}`;
+          } else {
+            return `${getPropertyLabel(g.property)} ${getOperatorLabel(g.operator)} ${g.values.join(` ${logic} `)}`;
+          }
+        });
+        return summaries.join(` ${logic} `);
+      }).filter(Boolean);
+      // Join groups with outerLogic (default OR)
+      const outerLogic = branch.outerLogic?.toUpperCase() || 'OR';
+      const summary = groupSummaries.join(` ${outerLogic} `);
+      return `${branchName}: ${summary || 'No condition set'}`;
+    }).join('\n');
+  }
+
   // Render a single branch
   const renderBranch = (branch: string, branchIndex: number, parentConditionId?: string) => {
     // Prevent duplicate rendering: if this branch is being rendered as a child of a Condition node, do not render it again at the top level
@@ -581,7 +655,7 @@ export function WorkflowBuilder() {
 
           const IconComponent = getIconComponent(template.icon);
           const iconColor = getIconColor(template.iconColor || 'purple');
-          const displayDescription = processMapDescription(
+          const displayDescription = isCondition ? getConditionBranchSummary(node) : processMapDescription(
             node.mapDescription || template.description, 
             node
           );
@@ -649,7 +723,7 @@ export function WorkflowBuilder() {
                           <h3 className="font-medium text-[#353B46] text-[14px] mb-0">{node.userAssignedName || template.name}</h3>
                         </div>
                         {displayDescription && (
-                          <p className="text-[10px] text-[#637085] leading-relaxed mt-2">{displayDescription}</p>
+                          <p className="text-[10px] text-[#637085] leading-relaxed mt-2 whitespace-pre-line">{displayDescription}</p>
                         )}
                       </div>
                       {/* Vertical line directly after the card, with no margin below */}
@@ -890,6 +964,53 @@ export function WorkflowBuilder() {
       collect(branch);
     }
     return idsToDelete;
+  }
+
+  // Utility to deeply and recursively remove all references to deleted branches from all nodes' metadata and localSidePanelElements
+  function deepCleanWorkflowForDeletedBranches(workflow: any, deletedBranches: string[]): any {
+    function recursiveClean(obj: any): any {
+      if (Array.isArray(obj)) {
+        // Recursively clean each item in the array
+        return obj
+          .map(recursiveClean)
+          .filter(item => {
+            // Remove branch objects whose name matches a deleted branch
+            if (item && typeof item === 'object' && 'name' in item && deletedBranches.includes(item.name)) {
+              return false;
+            }
+            return true;
+          });
+      } else if (obj && typeof obj === 'object') {
+        const cleaned: any = {};
+        for (const key of Object.keys(obj)) {
+          // Remove branch/branches fields referencing deleted branches
+          if (key === 'branch' && typeof obj[key] === 'string' && deletedBranches.includes(obj[key])) {
+            continue;
+          }
+          if (key === 'branches' && Array.isArray(obj[key])) {
+            cleaned[key] = obj[key].filter((b: any) =>
+              typeof b === 'string' ? !deletedBranches.includes(b) : (b && b.name ? !deletedBranches.includes(b.name) : true)
+            ).map(recursiveClean);
+            continue;
+          }
+          // Recursively clean nested objects/arrays
+          cleaned[key] = recursiveClean(obj[key]);
+        }
+        // Remove empty objects
+        if (Object.keys(cleaned).length === 0) return undefined;
+        return cleaned;
+      }
+      return obj;
+    }
+    // Remove nodes whose metadata.branch matches a deleted branch
+    let nodes = workflow.nodes.filter((n: any) => !deletedBranches.includes(n.metadata?.branch));
+    // For each node, clean up metadata and localSidePanelElements
+    nodes = nodes.map((node: any) => {
+      const cleanedMetadata = recursiveClean(node.metadata);
+      // Optionally, clean localSidePanelElements if you have branch-specific elements
+      return { ...node, metadata: cleanedMetadata };
+    });
+    return { ...workflow, nodes };
   }
 
   // Utility to repair branch assignments for all nodes after branch operations
@@ -1201,13 +1322,26 @@ export function WorkflowBuilder() {
                   console.log('WorkflowBuilder: Deleting node IDs', Array.from(idsToDelete));
                   // Repair branch assignments before filtering (optional, but safe)
                   const repairedNodes = repairBranchAssignments([...workflow.nodes], getActivityTemplate);
-                  const filteredNodes = repairedNodes.filter(n => !idsToDelete.has(n.id));
+                  const filteredNodes = repairedNodes.filter((n: any) => !idsToDelete.has(n.id));
                   const cleanedMetadata = { ...updates.metadata };
                   delete cleanedMetadata.__deleteNodesInBranches;
-                  const updatedWorkflow = {
+                  let updatedWorkflow = {
                     ...workflow,
                     nodes: filteredNodes
                   };
+                  // Deep clean all metadata for deleted branches
+                  updatedWorkflow = deepCleanWorkflowForDeletedBranches(updatedWorkflow, deletedBranches);
+                  // Remove nodes whose metadata.branch is not in any Condition node's branches or 'main'
+                  const validBranches = new Set(['main']);
+                  updatedWorkflow.nodes.forEach((node: any) => {
+                    const template = getActivityTemplate(node.activityTemplateId);
+                    if (template && (template.name.toLowerCase().includes('condition') || (template.description && template.description.toLowerCase().includes('condition')))) {
+                      (node.metadata?.branches || []).forEach((b: string) => validBranches.add(b));
+                    }
+                  });
+                  updatedWorkflow.nodes = updatedWorkflow.nodes.filter((n: any) => validBranches.has(n.metadata?.branch || 'main'));
+                  // Debug: log the workflow state after cleaning
+                  console.log('Workflow after branch deletion:', JSON.stringify(updatedWorkflow, null, 2));
                   dispatch({ type: 'UPDATE_WORKFLOW', payload: updatedWorkflow });
                   updateWorkflow(updatedWorkflow);
                   console.log('WorkflowBuilder: Updated workflow nodes', updatedWorkflow.nodes.map(n => n.id));
@@ -1217,7 +1351,7 @@ export function WorkflowBuilder() {
                     return;
                   }
                   // Always update the selected node to the latest version from the workflow
-                  let updatedNode = updatedWorkflow.nodes.find(n => n.id === selectedNode.id);
+                  let updatedNode = updatedWorkflow.nodes.find((n: any) => n.id === selectedNode.id);
                   if (updatedNode) {
                     // If this is a condition node, prune its metadata.branches to only include branches that still exist
                     const template = getActivityTemplate(updatedNode.activityTemplateId);
@@ -1227,7 +1361,7 @@ export function WorkflowBuilder() {
                         (template.description && template.description.toLowerCase().includes('condition')))
                     ) {
                       const allBranchNames = new Set(
-                        updatedWorkflow.nodes.map(n => n.metadata?.branch || 'main')
+                        updatedWorkflow.nodes.map((n: any) => n.metadata?.branch || 'main')
                       );
                       if (updatedNode.metadata && Array.isArray(updatedNode.metadata.branches)) {
                         updatedNode = {
@@ -1476,17 +1610,18 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
             />
           </div>
 
-          {/* Map Description Input */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Map Description
-            </label>
-            <MapDescriptionInput
-              value={node.mapDescription || template.description || ''}
-              onChange={(value) => onUpdate({ mapDescription: value })}
-              uiElements={currentElements}
-            />
-          </div>
+          {!isConditionNode && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Map Description
+              </label>
+              <MapDescriptionInput
+                value={node.mapDescription || template.description || ''}
+                onChange={(value) => onUpdate({ mapDescription: value })}
+                uiElements={currentElements}
+              />
+            </div>
+          )}
 
           {/* Side Panel Elements */}
           <div>
@@ -1525,6 +1660,7 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
         <div className="space-y-4">
           {/* Regular form elements */}
           <DynamicForm
+            key={node.id + JSON.stringify(node.metadata)}
             elements={currentElements}
             values={node.metadata || {}}
             onChange={(values) => {

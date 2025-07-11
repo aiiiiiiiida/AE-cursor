@@ -375,7 +375,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
       dispatch({ type: 'SET_ERROR', payload: null });
-      
+      // Log the workflow being sent to the backend for debugging
+      console.log('updateWorkflow: sending to backend:', JSON.stringify(workflow, null, 2));
+      // This is a full overwrite of the workflow record in the database
       const { error } = await supabase
         .from('workflows')
         .update({
