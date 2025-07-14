@@ -151,15 +151,17 @@ export function WorkflowBuilder() {
   const [isSaving, setIsSaving] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  
-  // Canvas state
+  const [showActivityDropdown, setShowActivityDropdown] = useState(false);
+  const [activityDropdownPosition, setActivityDropdownPosition] = useState<{ left: number; top: number } | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [editingBranch, setEditingBranch] = useState<string | null>(null);
+  const [editingBranchValue, setEditingBranchValue] = useState<string>('');
   const canvasRef = useRef<HTMLDivElement>(null);
-  // Add a ref for the scrollable content
   const contentRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const workflow = state.workflows.find(w => w.id === workflowId);
   const selectedNode = state.selectedNode;
@@ -170,22 +172,9 @@ export function WorkflowBuilder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workflowId]);
 
-  if (workflow) {
-    console.log('WorkflowBuilder: Rendering nodes', workflow.nodes.map(n => n.id));
-  }
-
-  // Find the trigger template
-  const triggerTemplate = state.activityTemplates.find(template => 
-    template.name.toLowerCase().includes('trigger') || template.icon === 'Zap'
-  );
-
-  const [showActivityDropdown, setShowActivityDropdown] = useState(false);
-  const [activityDropdownPosition, setActivityDropdownPosition] = useState<{ left: number; top: number } | null>(null);
-
   // Memoize centerCanvas function to prevent initialization issues
   const centerCanvas = useCallback(() => {
     if (!canvasRef.current || !contentRef.current) return;
-    // Use setTimeout to ensure DOM is updated before measuring
     setTimeout(() => {
       if (!canvasRef.current || !contentRef.current) return;
       const canvasRect = canvasRef.current.getBoundingClientRect();
@@ -205,7 +194,21 @@ export function WorkflowBuilder() {
   useEffect(() => {
     centerCanvas();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workflow?.id, selectedNode]); // Re-center when workflow changes or side panel opens/closes
+  }, [workflow?.id, selectedNode]);
+
+  // Find the trigger template
+  const triggerTemplate = state.activityTemplates.find(template => 
+    template.name.toLowerCase().includes('trigger') || template.icon === 'Zap'
+  );
+
+  // Show loading spinner if data is still loading
+  if (state.loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   if (!workflow) {
     return (
@@ -1172,11 +1175,6 @@ export function WorkflowBuilder() {
     });
     return nodes;
   }
-
-  // Add at the top, after imports
-  const [editingBranch, setEditingBranch] = useState<string | null>(null);
-  const [editingBranchValue, setEditingBranchValue] = useState<string>('');
-  const inputRef = useRef<HTMLInputElement>(null);
 
   // Helper to update all references to a branch name in the workflow
   function updateBranchNameEverywhere(oldName: string, newName: string) {
