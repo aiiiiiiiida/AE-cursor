@@ -584,11 +584,6 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
           return (
             <div key={element.id} className={indentClass}>
               <div className="flex items-center justify-between">
-                {element.type !== 'button' && (
-                  <label className="block text-[13px] font-medium text-slate-700 mb-2">
-                    {element.label}
-                  </label>
-                )}
                 {Object.values(dynamicElements).flat().some(de => de.id === element.id) && (
                   <button
                     type="button"
@@ -684,14 +679,12 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
                 </div>
               )}
 
-              {element.type !== 'section-divider' && element.type !== 'text-block' && element.type !== 'button' && (
+              {element.type !== 'section-divider' && element.type !== 'text-block' && (
                 <>
                   <div className="flex items-center justify-between">
-                    {element.type !== 'button' && (
-                      <label className="block text-[13px] font-medium text-slate-700 mb-2">
-                        {element.label}
-                      </label>
-                    )}
+                    <label className="block text-[13px] font-medium text-slate-700 mb-2">
+                      {element.label}
+                    </label>
                     {isDynamic && (
                       <button
                         type="button"
@@ -749,7 +742,13 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
                   {element.type === 'number' && (
                     <input
                       type="number"
-                      value={localFormValues[element.id] ?? ''}
+                      value={
+                        localFormValues[element.id] !== undefined && localFormValues[element.id] !== ''
+                          ? localFormValues[element.id]
+                          : (typeof element.defaultValue === 'number' || typeof element.defaultValue === 'string')
+                            ? element.defaultValue
+                            : ''
+                      }
                       onChange={(e) => setLocalFormValues(prev => ({ ...prev, [element.id]: e.target.value === '' ? '' : Number(e.target.value) }))}
                       onBlur={() => handleValueChange(element.id, localFormValues[element.id])}
                       placeholder={element.placeholder}

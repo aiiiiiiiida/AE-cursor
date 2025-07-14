@@ -1183,7 +1183,7 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
             />
           </div>
         )}
-        {element.type !== 'section-divider' && element.type !== 'screening-questions' && element.type !== 'conditions-module' && element.type !== 'events-module' && element.type !== 'checkbox' && element.type !== 'button' && element.type !== 'trigger-conditions-module' && element.type !== 'toggle' && element.type !== 'file-upload' && element.type !== 'radio' && element.type !== 'text-block' && (
+        {element.type !== 'section-divider' && element.type !== 'screening-questions' && element.type !== 'conditions-module' && element.type !== 'events-module' && element.type !== 'checkbox' && element.type !== 'button' && element.type !== 'trigger-conditions-module' && element.type !== 'toggle' && element.type !== 'file-upload' && element.type !== 'radio' && element.type !== 'text-block' && element.type !== 'date' && (
           <div>
             <label className="block text-xs font-medium text-slate-600 mb-1">Placeholder</label>
             <input

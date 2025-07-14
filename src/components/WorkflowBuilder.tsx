@@ -31,7 +31,8 @@ const AVAILABLE_ICONS = [
   { name: 'Robot', component: Bot },
   { name: 'Star', component: Star },
   { name: 'Sparkle', component: Sparkle },
-  { name: 'UserRoundPlus', component: UserRoundPlus }
+  { name: 'UserRoundPlus', component: UserRoundPlus },
+  { name: 'Plus', component: Plus },
 ];
 
 const ICON_COLORS = [
@@ -2453,6 +2454,467 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove, tabSelector, onT
               No follow-up elements added yet.
             </div>
           )}
+        </div>
+      )}
+      {/* Dropdown options, default, and multiselect */}
+      {element.type === 'dropdown' && (
+        <div className="col-span-2 mb-3">
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-xs font-medium text-slate-600">Options</label>
+            <button
+              type="button"
+              onClick={() => onUpdate(element.id, { options: [...(element.options || []), ''] })}
+              className="flex items-center space-x-1 px-2 py-1 bg-[#4D3EE0] text-white rounded-lg text-xs hover:bg-[#2927B2] transition-colors"
+            >
+              <Plus className="w-3 h-3" />
+              <span>Add</span>
+            </button>
+          </div>
+          <div className="space-y-2">
+            {(element.options || []).map((option, index) => (
+              <div key={index} className="relative">
+                <input
+                  type="text"
+                  value={option}
+                  onChange={e => {
+                    const newOptions = [...(element.options || [])];
+                    newOptions[index] = e.target.value;
+                    onUpdate(element.id, { options: newOptions });
+                  }}
+                  className="w-full pr-8 px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder={`Option ${index + 1}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newOptions = (element.options || []).filter((_, i) => i !== index);
+                    onUpdate(element.id, { options: newOptions });
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                  tabIndex={-1}
+                  aria-label="Remove option"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+            {(!element.options || element.options.length === 0) && (
+              <div className="text-center py-3 border-2 border-dashed border-slate-300 rounded text-xs text-slate-500">
+                No options added yet. Click "Add" to create your first option.
+              </div>
+            )}
+          </div>
+          {/* Default option selector */}
+          <div className="mt-2">
+            <label className="block text-xs font-medium text-slate-600 mb-1">Default Selected Option</label>
+            <select
+              value={typeof element.defaultValue === 'string' ? element.defaultValue : ''}
+              onChange={e => onUpdate(element.id, { defaultValue: e.target.value || undefined })}
+              disabled={!element.options || element.options.length === 0}
+              className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">None</option>
+              {element.options && element.options.map((option, idx) => (
+                <option key={idx} value={option}>{option}</option>
+              ))}
+            </select>
+          </div>
+          {/* Multiselect checkbox */}
+          <div className="mt-2 flex items-center">
+            <input
+              type="checkbox"
+              id={`multiselect-${element.id}`}
+              checked={element.multiselect || false}
+              onChange={e => onUpdate(element.id, { multiselect: e.target.checked })}
+              className="mr-2"
+            />
+            <label htmlFor={`multiselect-${element.id}`} className="text-xs text-slate-600">
+              Allow multiple selections
+            </label>
+          </div>
+        </div>
+      )}
+      {/* Checkbox options editor */}
+      {element.type === 'checkbox' && (
+        <div className="col-span-2 mb-3">
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-xs font-medium text-slate-600">Options</label>
+            <button
+              type="button"
+              onClick={() => onUpdate(element.id, { options: [...(element.options || []), ''] })}
+              className="flex items-center space-x-1 px-2 py-1 bg-[#4D3EE0] text-white rounded-lg text-xs hover:bg-[#2927B2] transition-colors"
+            >
+              <Plus className="w-3 h-3" />
+              <span>Add</span>
+            </button>
+          </div>
+          <div className="space-y-2">
+            {(element.options || []).map((option, index) => (
+              <div key={index} className="relative">
+                <input
+                  type="text"
+                  value={option}
+                  onChange={e => {
+                    const newOptions = [...(element.options || [])];
+                    newOptions[index] = e.target.value;
+                    onUpdate(element.id, { options: newOptions });
+                  }}
+                  className="w-full pr-8 px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder={`Option ${index + 1}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newOptions = (element.options || []).filter((_, i) => i !== index);
+                    onUpdate(element.id, { options: newOptions });
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                  tabIndex={-1}
+                  aria-label="Remove option"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+            {(!element.options || element.options.length === 0) && (
+              <div className="text-center py-3 border-2 border-dashed border-slate-300 rounded text-xs text-slate-500">
+                No options added yet. Click "Add" to create your first option.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      {/* Radio options editor and default */}
+      {element.type === 'radio' && (
+        <div className="col-span-2 mb-3">
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-xs font-medium text-slate-600">Options</label>
+            <button
+              type="button"
+              onClick={() => onUpdate(element.id, { options: [...(element.options || []), ''] })}
+              className="flex items-center space-x-1 px-2 py-1 bg-[#4D3EE0] text-white rounded-lg text-xs hover:bg-[#2927B2] transition-colors"
+            >
+              <Plus className="w-3 h-3" />
+              <span>Add</span>
+            </button>
+          </div>
+          <div className="space-y-2">
+            {(element.options || []).map((option, index) => (
+              <div key={index} className="relative">
+                <input
+                  type="text"
+                  value={option}
+                  onChange={e => {
+                    const newOptions = [...(element.options || [])];
+                    newOptions[index] = e.target.value;
+                    onUpdate(element.id, { options: newOptions });
+                  }}
+                  className="w-full pr-8 px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder={`Option ${index + 1}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newOptions = (element.options || []).filter((_, i) => i !== index);
+                    onUpdate(element.id, { options: newOptions });
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                  tabIndex={-1}
+                  aria-label="Remove option"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+            {(!element.options || element.options.length === 0) && (
+              <div className="text-center py-3 border-2 border-dashed border-slate-300 rounded text-xs text-slate-500">
+                No options added yet. Click "Add" to create your first option.
+              </div>
+            )}
+          </div>
+          {/* Default option selector */}
+          <div className="mt-2">
+            <label className="block text-xs font-medium text-slate-600 mb-1">Default Selected Option</label>
+            <select
+              value={typeof element.defaultValue === 'string' ? element.defaultValue : ''}
+              onChange={e => onUpdate(element.id, { defaultValue: e.target.value || undefined })}
+              disabled={!element.options || element.options.length === 0}
+              className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">None</option>
+              {element.options && element.options.map((option, idx) => (
+                <option key={idx} value={option}>{option}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+      {/* Section Divider title input */}
+      {element.type === 'section-divider' && (
+        <div className="col-span-2 mb-3">
+          <label className="block text-xs font-medium text-slate-600 mb-1">Section Title</label>
+          <input
+            type="text"
+            value={element.text || element.label}
+            onChange={e => onUpdate(element.id, { text: e.target.value, label: e.target.value })}
+            className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="Section title (optional)"
+          />
+          <div className="text-xs text-slate-500 mt-1">Leave empty if you just want a divider line</div>
+        </div>
+      )}
+      {/* Button full editing UI: Has title, Has icon, Adds elements, and corresponding inputs */}
+      {element.type === 'button' && (
+        <div className="col-span-2 mb-3 space-y-3">
+          {/* Has title checkbox */}
+          <div className="flex items-center mb-2">
+            <input
+              type="checkbox"
+              id={`has-title-${element.id}`}
+              checked={!!element.hasTitle}
+              onChange={e => onUpdate(element.id, { hasTitle: e.target.checked })}
+              className="mr-2"
+            />
+            <label htmlFor={`has-title-${element.id}`} className="text-xs text-slate-600">
+              Has title
+            </label>
+          </div>
+          {/* Title input */}
+          {element.hasTitle && (
+            <div className="mb-2">
+              <label className="block text-xs font-medium text-slate-600 mb-1">Title</label>
+              <input
+                type="text"
+                value={element.title || ''}
+                onChange={e => onUpdate(element.id, { title: e.target.value })}
+                className="w-full px-2 py-1 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Button title"
+              />
+            </div>
+          )}
+          {/* Has icon checkbox */}
+          <div className="flex items-center mb-2">
+            <input
+              type="checkbox"
+              id={`has-icon-${element.id}`}
+              checked={!!element.hasIcon}
+              onChange={e => onUpdate(element.id, { hasIcon: e.target.checked })}
+              className="mr-2"
+            />
+            <label htmlFor={`has-icon-${element.id}`} className="text-xs text-slate-600">
+              Has icon
+            </label>
+          </div>
+          {/* Icon selection and position */}
+          {element.hasIcon && (
+            <div className="space-y-3 ml-4 rounded-lg">
+              <div>
+                <div className="flex flex-wrap gap-1">
+                  {AVAILABLE_ICONS.map((iconOption) => {
+                    const IconComponent = iconOption.component;
+                    const isSelected = element.icon === iconOption.name;
+                    return (
+                      <button
+                        key={iconOption.name}
+                        type="button"
+                        onClick={() => onUpdate(element.id, { icon: normalizeIconName(iconOption.name) })}
+                        className={`p-1 rounded border bg-white transition-all duration-200 ${
+                          isSelected
+                            ? 'border-[#4D3EE0] bg-blue-50'
+                            : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <IconComponent className="w-4 h-4 mx-auto" style={{ color: '#4D3EE0' }} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-2">Icon Position</label>
+                <div className="flex space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => onUpdate(element.id, { iconPosition: 'left' })}
+                    className={`px-3 py-1 rounded-md text-xs transition-colors ${
+                      (element.iconPosition || 'left') === 'left'
+                        ? 'bg-blue-50 text-slate-800 border border-[#4D3EE0]'
+                        : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-200'
+                    }`}
+                  >
+                    Left
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onUpdate(element.id, { iconPosition: 'right' })}
+                    className={`px-3 py-1 rounded-md text-xs transition-colors ${
+                      element.iconPosition === 'right'
+                        ? 'bg-blue-50 text-slate-800 border border-[#4D3EE0]'
+                        : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-200'
+                    }`}
+                  >
+                    Right
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          {/* Adds elements checkbox */}
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id={`adds-elements-${element.id}`}
+              checked={!!element.addsElements}
+              onChange={e => onUpdate(element.id, { addsElements: e.target.checked })}
+              className="mr-2"
+            />
+            <label htmlFor={`adds-elements-${element.id}`} className="text-xs text-slate-600">
+              Adds elements
+            </label>
+          </div>
+          {/* Add New Elements checkbox (only if addsElements is checked) */}
+          {element.addsElements && (
+            <div className="flex items-center mt-2">
+              <input
+                type="checkbox"
+                id={`add-new-elements-${element.id}`}
+                checked={!!element.addNewElements}
+                onChange={e => onUpdate(element.id, { addNewElements: e.target.checked })}
+                className="mr-2"
+              />
+              <label htmlFor={`add-new-elements-${element.id}`} className="text-xs text-slate-600">
+                Add new elements
+              </label>
+            </div>
+          )}
+          {/* Configure added elements or reference input */}
+          {element.addsElements && element.addNewElements && (
+            <div className="ml-4 p-3 bg-white rounded border">
+              <label className="block text-xs font-medium text-slate-600 mb-2">Elements to Add (appear above button)</label>
+              <div className="space-y-2">
+                {(element.addedElements || []).map((addedEl, idx) => (
+                  <WorkflowUIElementEditor
+                    key={addedEl.id}
+                    element={addedEl}
+                    onUpdate={(id, updates) => {
+                      const newAdded = [...(element.addedElements || [])];
+                      newAdded[idx] = { ...addedEl, ...updates };
+                      onUpdate(element.id, { addedElements: newAdded });
+                    }}
+                    onRemove={id => {
+                      const newAdded = [...(element.addedElements || [])];
+                      newAdded.splice(idx, 1);
+                      onUpdate(element.id, { addedElements: newAdded });
+                    }}
+                  />
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newAdded = [
+                      ...((element.addedElements as any[]) || []),
+                      {
+                        id: Date.now().toString(),
+                        type: 'dropdown',
+                        label: 'New Dropdown',
+                        required: false,
+                        options: ['Option 1', 'Option 2'],
+                        tab: element.tab
+                      }
+                    ];
+                    onUpdate(element.id, { addedElements: newAdded });
+                  }}
+                  className="text-xs text-blue-700 hover:underline mt-2"
+                >
+                  + Add Element
+                </button>
+              </div>
+            </div>
+          )}
+          {element.addsElements && !element.addNewElements && (
+            <div className="ml-4 p-3 bg-white rounded border">
+              <label className="block text-xs font-medium text-slate-600 mb-1">
+                Element Reference
+              </label>
+              <input
+                type="text"
+                value={element.elementReference || ''}
+                onChange={e => onUpdate(element.id, { elementReference: e.target.value })}
+                className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Type # to reference elements (e.g., #{Questionnaire})"
+              />
+              <div className="mt-1 text-xs text-slate-500">
+                Type <code className="bg-slate-100 px-1 rounded">#</code> to reference existing elements or create new ones.
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {/* Events Module Editor */}
+      {element.type === 'events-module' && (
+        <div className="col-span-2 mb-3">
+          <label className="block text-xs font-medium text-slate-600 mb-1">Events</label>
+          <div className="space-y-3">
+            {(element.events || []).map((event, idx) => (
+              <div key={idx} className="border rounded-lg p-3 bg-slate-50 flex flex-col gap-2 relative">
+                <button
+                  type="button"
+                  className="absolute top-2 right-2 text-slate-400 hover:text-red-500 p-1"
+                  onClick={() => {
+                    const newEvents = [...(element.events || [])];
+                    newEvents.splice(idx, 1);
+                    onUpdate(element.id, { events: newEvents });
+                  }}
+                  tabIndex={-1}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                <input
+                  type="text"
+                  className="w-full px-2 py-1 border border-[#8C95A8] rounded text-sm mb-1"
+                  placeholder="Event title"
+                  value={event.title}
+                  onChange={e => {
+                    const newEvents = [...(element.events || [])];
+                    newEvents[idx] = { ...event, title: e.target.value };
+                    onUpdate(element.id, { events: newEvents });
+                  }}
+                />
+                <input
+                  type="text"
+                  className="w-full px-2 py-1 border border-[#8C95A8] rounded text-sm mb-1"
+                  placeholder="Event subtitle"
+                  value={event.subtitle}
+                  onChange={e => {
+                    const newEvents = [...(element.events || [])];
+                    newEvents[idx] = { ...event, subtitle: e.target.value };
+                    onUpdate(element.id, { events: newEvents });
+                  }}
+                />
+                <input
+                  type="text"
+                  className="w-full px-2 py-1 border border-[#8C95A8] rounded text-sm"
+                  placeholder="Event tag"
+                  value={event.tag}
+                  onChange={e => {
+                    const newEvents = [...(element.events || [])];
+                    newEvents[idx] = { ...event, tag: e.target.value };
+                    onUpdate(element.id, { events: newEvents });
+                  }}
+                />
+              </div>
+            ))}
+            <button
+              type="button"
+              className="mt-2 px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+              onClick={() => {
+                const newEvents = [...(element.events || []), { title: '', subtitle: '', tag: '' }];
+                onUpdate(element.id, { events: newEvents });
+              }}
+            >
+              + Add Event
+            </button>
+          </div>
         </div>
       )}
     </div>

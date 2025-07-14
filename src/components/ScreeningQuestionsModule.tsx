@@ -63,37 +63,37 @@ function ScreeningQuestionsModule({ value, onChange }: { value?: Question[]; onC
   // Fix linter errors: setQuestions should always be called with a value, not a function
   const handleTypeClick = (qIdx: number) => {
     const newQuestions = questions.map((q, i) => ({
-      type: q.type || 'Single Choice',
-      showDropdown: i === qIdx ? !q.showDropdown : false,
-      text: q.text || '',
-      answers: Array.isArray(q.answers) ? q.answers : ['', ''],
-      rows: Array.isArray(q.rows) && q.rows.length > 0 ? q.rows : [''],
-      columns: Array.isArray(q.columns) && q.columns.length > 0 ? q.columns : [''],
+          type: q.type || 'Single Choice',
+          showDropdown: i === qIdx ? !q.showDropdown : false,
+          text: q.text || '',
+          answers: Array.isArray(q.answers) ? q.answers : ['', ''],
+          rows: Array.isArray(q.rows) && q.rows.length > 0 ? q.rows : [''],
+          columns: Array.isArray(q.columns) && q.columns.length > 0 ? q.columns : [''],
     }));
     setQuestions(newQuestions);
   };
 
   const handleTypeSelect = (qIdx: number, type: string) => {
     const newQuestions = questions.map((q, i) => {
-      if (i === qIdx) {
-        return {
-          type,
-          showDropdown: false,
-          text: q.text || '',
-          answers: isChoiceType(type) ? ['', ''] : [],
-          rows: isGridType(type) ? [''] : [''],
-          columns: isGridType(type) ? [''] : [''],
-        };
-      } else {
-        return {
-          type: q.type || 'Single Choice',
-          showDropdown: false,
-          text: q.text || '',
-          answers: Array.isArray(q.answers) ? q.answers : ['', ''],
-          rows: Array.isArray(q.rows) && q.rows.length > 0 ? q.rows : [''],
-          columns: Array.isArray(q.columns) && q.columns.length > 0 ? q.columns : [''],
-        };
-      }
+        if (i === qIdx) {
+          return {
+            type,
+            showDropdown: false,
+            text: q.text || '',
+            answers: isChoiceType(type) ? ['', ''] : [],
+            rows: isGridType(type) ? [''] : [''],
+            columns: isGridType(type) ? [''] : [''],
+          };
+        } else {
+          return {
+            type: q.type || 'Single Choice',
+            showDropdown: false,
+            text: q.text || '',
+            answers: Array.isArray(q.answers) ? q.answers : ['', ''],
+            rows: Array.isArray(q.rows) && q.rows.length > 0 ? q.rows : [''],
+            columns: Array.isArray(q.columns) && q.columns.length > 0 ? q.columns : [''],
+          };
+        }
     });
     setQuestions(newQuestions);
   };
@@ -105,16 +105,16 @@ function ScreeningQuestionsModule({ value, onChange }: { value?: Question[]; onC
 
   const handleAnswerChange = (qIdx: number, aIdx: number, value: string) => {
     const updated = localQuestions.map((q, i) =>
-      i === qIdx
-        ? { ...q, answers: q.answers.map((a, j) => (j === aIdx ? value : a)) }
-        : q
+        i === qIdx
+          ? { ...q, answers: q.answers.map((a, j) => (j === aIdx ? value : a)) }
+          : q
     );
     setLocalQuestions(updated);
   };
 
   const handleAddAnswer = (qIdx: number) => {
     const updated = localQuestions.map((q, i) =>
-      i === qIdx ? { ...q, answers: [...q.answers, ''] } : q
+        i === qIdx ? { ...q, answers: [...q.answers, ''] } : q
     );
     setLocalQuestions(updated);
     setQuestions(updated);
