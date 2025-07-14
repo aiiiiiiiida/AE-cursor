@@ -94,6 +94,14 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
   const [activeTab, setActiveTab] = useState<'Configuration' | 'Advanced' | 'User Interface'>('Configuration');
   const dropdownRefs = useRef<Record<string, HTMLDivElement>>({});
 
+  // Add localFormValues for buffered editing
+  const [localFormValues, setLocalFormValues] = useState<Record<string, any>>(formValues);
+
+  // Sync localFormValues with formValues when formValues change
+  useEffect(() => {
+    setLocalFormValues(formValues);
+  }, [formValues]);
+
   // Determine which tabs are present
   const tabSet = new Set(
     elements.map(el => el.tab || 'Configuration')
@@ -362,7 +370,10 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
         if (element.type === 'screening-questions') {
           return (
             <div key={element.id} className="md:col-span-2">
-              <ScreeningQuestionsModule />
+              <ScreeningQuestionsModule
+                value={formValues[element.id] || []}
+                onChange={val => handleValueChange(element.id, val)}
+              />
             </div>
           );
         }
@@ -695,8 +706,9 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
                   {element.type === 'text' && (
                     <input
                       type="text"
-                      value={formValues[element.id] !== undefined ? formValues[element.id] : (typeof element.defaultValue === 'string' ? element.defaultValue : '')}
-                      onChange={(e) => handleValueChange(element.id, e.target.value)}
+                      value={localFormValues[element.id] !== undefined ? localFormValues[element.id] : (typeof element.defaultValue === 'string' ? element.defaultValue : '')}
+                      onChange={(e) => setLocalFormValues(prev => ({ ...prev, [element.id]: e.target.value }))}
+                      onBlur={() => handleValueChange(element.id, localFormValues[element.id])}
                       placeholder={element.placeholder}
                       required={element.required}
                       readOnly={!!element.disabled}
@@ -708,8 +720,9 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
 
                   {element.type === 'textarea' && (
                     <textarea
-                      value={formValues[element.id] !== undefined ? formValues[element.id] : (typeof element.defaultValue === 'string' ? element.defaultValue : '')}
-                      onChange={(e) => handleValueChange(element.id, e.target.value)}
+                      value={localFormValues[element.id] !== undefined ? localFormValues[element.id] : (typeof element.defaultValue === 'string' ? element.defaultValue : '')}
+                      onChange={(e) => setLocalFormValues(prev => ({ ...prev, [element.id]: e.target.value }))}
+                      onBlur={() => handleValueChange(element.id, localFormValues[element.id])}
                       placeholder={element.placeholder}
                       required={element.required}
                       rows={3}
@@ -736,8 +749,9 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
                   {element.type === 'number' && (
                     <input
                       type="number"
-                      value={formValues[element.id] ?? ''}
-                      onChange={(e) => handleValueChange(element.id, e.target.value === '' ? '' : Number(e.target.value))}
+                      value={localFormValues[element.id] ?? ''}
+                      onChange={(e) => setLocalFormValues(prev => ({ ...prev, [element.id]: e.target.value === '' ? '' : Number(e.target.value) }))}
+                      onBlur={() => handleValueChange(element.id, localFormValues[element.id])}
                       placeholder={element.placeholder}
                       required={element.required}
                       min={element.min}
@@ -750,8 +764,9 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
                   {element.type === 'date' && (
                     <input
                       type="date"
-                      value={formValues[element.id] || ''}
-                      onChange={(e) => handleValueChange(element.id, e.target.value)}
+                      value={localFormValues[element.id] || ''}
+                      onChange={(e) => setLocalFormValues(prev => ({ ...prev, [element.id]: e.target.value }))}
+                      onBlur={() => handleValueChange(element.id, localFormValues[element.id])}
                       placeholder={element.placeholder}
                       required={element.required}
                       min={typeof element.min === 'string' ? element.min : undefined}

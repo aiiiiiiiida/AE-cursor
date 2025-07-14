@@ -1866,7 +1866,7 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
         <div className="space-y-4">
           {/* Regular form elements */}
           <DynamicForm
-            key={node.id + JSON.stringify(node.metadata)}
+            key={node.id}
             elements={currentElements}
             values={node.metadata || {}}
             onChange={(values) => {

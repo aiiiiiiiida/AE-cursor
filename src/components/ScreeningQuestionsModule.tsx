@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Plus, X as LucideX } from 'lucide-react';
 
 type Question = {
@@ -18,89 +18,111 @@ const QUESTION_TYPES = [
   'Free Text',
 ];
 
-function ScreeningQuestionsModule() {
-  const [questions, setQuestions] = useState<Question[]>([
+function ScreeningQuestionsModule({ value, onChange }: { value?: Question[]; onChange?: (questions: Question[]) => void } = {}) {
+  const [internalQuestions, setInternalQuestions] = useState<Question[]>([
     {
       type: 'Single Choice',
       showDropdown: false,
       text: '',
       answers: ['', ''],
-      rows: [''], // For grid
-      columns: [''], // For grid
+      rows: [''],
+      columns: [''],
     },
   ]);
+  const questions = value !== undefined ? value : internalQuestions;
+  const setQuestions = (qs: Question[]) => {
+    if (onChange) onChange(qs);
+    else setInternalQuestions(qs);
+  };
+
+  // Add a localQuestions state for editing, and only commit changes onBlur or on add/remove
+  const [localQuestions, setLocalQuestions] = useState<Question[]>(questions);
+
+  // Sync localQuestions with questions prop when it changes (but not while editing)
+  useEffect(() => {
+    setLocalQuestions(questions);
+  }, [questions]);
+
+  // For all input onChange, update localQuestions only
+  // For onBlur, call setQuestions(localQuestions)
+  // For add/remove actions, update localQuestions and immediately call setQuestions
+
+  // Example for question text input:
+  // onChange={e => {
+  //   const updated = localQuestions.map((q, i) => i === qIdx ? { ...q, text: e.target.value } : q);
+  //   setLocalQuestions(updated);
+  // }}
+  // onBlur={() => setQuestions(localQuestions)}
+
+  // Apply this pattern to all answer, row, column, and question text inputs
+  // For add/remove, after updating localQuestions, also call setQuestions
 
   const isChoiceType = (type: string) => type === 'Single Choice' || type === 'Multiple Choice';
   const isGridType = (type: string) => type === 'Multiple Choice Grid';
 
+  // Fix linter errors: setQuestions should always be called with a value, not a function
   const handleTypeClick = (qIdx: number) => {
-    setQuestions((prev) =>
-      prev.map((q, i) => {
+    const newQuestions = questions.map((q, i) => ({
+      type: q.type || 'Single Choice',
+      showDropdown: i === qIdx ? !q.showDropdown : false,
+      text: q.text || '',
+      answers: Array.isArray(q.answers) ? q.answers : ['', ''],
+      rows: Array.isArray(q.rows) && q.rows.length > 0 ? q.rows : [''],
+      columns: Array.isArray(q.columns) && q.columns.length > 0 ? q.columns : [''],
+    }));
+    setQuestions(newQuestions);
+  };
+
+  const handleTypeSelect = (qIdx: number, type: string) => {
+    const newQuestions = questions.map((q, i) => {
+      if (i === qIdx) {
+        return {
+          type,
+          showDropdown: false,
+          text: q.text || '',
+          answers: isChoiceType(type) ? ['', ''] : [],
+          rows: isGridType(type) ? [''] : [''],
+          columns: isGridType(type) ? [''] : [''],
+        };
+      } else {
         return {
           type: q.type || 'Single Choice',
-          showDropdown: i === qIdx ? !q.showDropdown : false,
+          showDropdown: false,
           text: q.text || '',
           answers: Array.isArray(q.answers) ? q.answers : ['', ''],
           rows: Array.isArray(q.rows) && q.rows.length > 0 ? q.rows : [''],
           columns: Array.isArray(q.columns) && q.columns.length > 0 ? q.columns : [''],
         };
-      })
-    );
-  };
-
-  const handleTypeSelect = (qIdx: number, type: string) => {
-    setQuestions((prev) =>
-      prev.map((q, i) => {
-        if (i === qIdx) {
-          return {
-            type,
-            showDropdown: false,
-            text: q.text || '',
-            answers: isChoiceType(type) ? ['', ''] : [],
-            rows: isGridType(type) ? [''] : [''],
-            columns: isGridType(type) ? [''] : [''],
-          };
-        } else {
-          return {
-            type: q.type || 'Single Choice',
-            showDropdown: false,
-            text: q.text || '',
-            answers: Array.isArray(q.answers) ? q.answers : ['', ''],
-            rows: Array.isArray(q.rows) && q.rows.length > 0 ? q.rows : [''],
-            columns: Array.isArray(q.columns) && q.columns.length > 0 ? q.columns : [''],
-          };
-        }
-      })
-    );
+      }
+    });
+    setQuestions(newQuestions);
   };
 
   const handleQuestionChange = (qIdx: number, value: string) => {
-    setQuestions((prev) =>
-      prev.map((q, i) => (i === qIdx ? { ...q, text: value } : q))
-    );
+    const updated = localQuestions.map((q, i) => (i === qIdx ? { ...q, text: value } : q));
+    setLocalQuestions(updated);
   };
 
   const handleAnswerChange = (qIdx: number, aIdx: number, value: string) => {
-    setQuestions((prev) =>
-      prev.map((q, i) =>
-        i === qIdx
-          ? { ...q, answers: q.answers.map((a, j) => (j === aIdx ? value : a)) }
-          : q
-      )
+    const updated = localQuestions.map((q, i) =>
+      i === qIdx
+        ? { ...q, answers: q.answers.map((a, j) => (j === aIdx ? value : a)) }
+        : q
     );
+    setLocalQuestions(updated);
   };
 
   const handleAddAnswer = (qIdx: number) => {
-    setQuestions((prev) =>
-      prev.map((q, i) =>
-        i === qIdx ? { ...q, answers: [...q.answers, ''] } : q
-      )
+    const updated = localQuestions.map((q, i) =>
+      i === qIdx ? { ...q, answers: [...q.answers, ''] } : q
     );
+    setLocalQuestions(updated);
+    setQuestions(updated);
   };
 
   const handleAddQuestion = () => {
-    setQuestions((prev) => [
-      ...prev,
+    const newQuestions = [
+      ...questions,
       {
         type: 'Single Choice',
         showDropdown: false,
@@ -109,19 +131,22 @@ function ScreeningQuestionsModule() {
         rows: [''],
         columns: [''],
       },
-    ]);
+    ];
+    setQuestions(newQuestions);
   };
 
   return (
     <div className="space-y-4">
-      {questions.map((q, qIdx) => (
+      {localQuestions.map((q: Question, qIdx: number) => (
         <div key={qIdx} className="space-y-3 relative group">
-          {questions.length > 1 && (
+          {localQuestions.length > 1 && (
             <button
               type="button"
               className="absolute top-0 right-0 text-slate-400 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
               onClick={() => {
-                setQuestions(prev => prev.filter((_, i) => i !== qIdx));
+                const newQuestions = localQuestions.filter((_: Question, i: number) => i !== qIdx);
+                setLocalQuestions(newQuestions);
+                setQuestions(newQuestions);
               }}
               tabIndex={-1}
             >
@@ -142,7 +167,7 @@ function ScreeningQuestionsModule() {
             </label>
             {q.showDropdown && (
               <div className="absolute z-10 mt-1 w-56 bg-white border rounded-xl shadow-lg">
-                {QUESTION_TYPES.map((type) => (
+                {QUESTION_TYPES.map((type: string) => (
                   <div
                     key={type}
                     className="px-4 py-2 hover:bg-gray-100 text-xs cursor-pointer"
@@ -158,6 +183,7 @@ function ScreeningQuestionsModule() {
               placeholder="Question"
               value={q.text}
               onChange={(e) => handleQuestionChange(qIdx, e.target.value)}
+              onBlur={() => setQuestions(localQuestions)}
             />
           </div>
           {q.type === 'Yes/No' ? (
@@ -179,22 +205,25 @@ function ScreeningQuestionsModule() {
             </>
           ) : q.type === 'Free Text' ? null : isChoiceType(q.type) ? (
             <>
-              {q.answers.map((a, aIdx) => (
+              {q.answers.map((a: string, aIdx: number) => (
                 <div key={aIdx} className="relative flex items-center group mt-2">
                   <input
                     className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent text-[13px] placeholder:text-slate-500"
                     placeholder={`Answer ${aIdx + 1}`}
                     value={a}
                     onChange={(e) => handleAnswerChange(qIdx, aIdx, e.target.value)}
+                    onBlur={() => setQuestions(localQuestions)}
                   />
                   {q.answers.length > 2 && (
                     <button
                       type="button"
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={() => {
-                        setQuestions(prev => prev.map((qq, i) =>
-                          i === qIdx ? { ...qq, answers: qq.answers.filter((_, idx) => idx !== aIdx) } : qq
-                        ));
+                        const newQuestions = localQuestions.map((qq: Question, i: number) =>
+                          i === qIdx ? { ...qq, answers: qq.answers.filter((_: string, idx: number) => idx !== aIdx) } : qq
+                        );
+                        setLocalQuestions(newQuestions);
+                        setQuestions(newQuestions);
                       }}
                       tabIndex={-1}
                     >
@@ -216,7 +245,7 @@ function ScreeningQuestionsModule() {
               <div className="flex gap-4 mt-2">
                 {/* Rows column */}
                 <div className="flex flex-col flex-1">
-                  {q.rows.map((row, rIdx) => (
+                  {q.rows.map((row: string, rIdx: number) => (
                     <div key={rIdx} className="relative flex items-center group mb-2 mt-2">
                       <input
                         className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent text-[13px] placeholder:text-slate-500"
@@ -225,17 +254,21 @@ function ScreeningQuestionsModule() {
                         onChange={e => {
                           const newRows = [...q.rows];
                           newRows[rIdx] = e.target.value;
-                          setQuestions(prev => prev.map((qq, i) => i === qIdx ? { ...qq, rows: newRows } : qq));
+                          const updated = localQuestions.map((qq: Question, i: number) => i === qIdx ? { ...qq, rows: newRows } : qq);
+                          setLocalQuestions(updated);
                         }}
+                        onBlur={() => setQuestions(localQuestions)}
                       />
                       {q.rows.length > 1 && (
                         <button
                           type="button"
                           className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={() => {
-                            setQuestions(prev => prev.map((qq, i) =>
-                              i === qIdx ? { ...qq, rows: qq.rows.filter((_, idx) => idx !== rIdx) } : qq
-                            ));
+                            const newQuestions = localQuestions.map((qq: Question, i: number) =>
+                              i === qIdx ? { ...qq, rows: qq.rows.filter((_: string, idx: number) => idx !== rIdx) } : qq
+                            );
+                            setLocalQuestions(newQuestions);
+                            setQuestions(newQuestions);
                           }}
                           tabIndex={-1}
                         >
@@ -248,7 +281,9 @@ function ScreeningQuestionsModule() {
                     type="button"
                     className="text-[#2927B2] font-medium text-xs flex items-center mt-1"
                     onClick={() => {
-                      setQuestions(prev => prev.map((qq, i) => i === qIdx ? { ...qq, rows: [...qq.rows, ''] } : qq));
+                      const newQuestions = localQuestions.map((qq: Question, i: number) => i === qIdx ? { ...qq, rows: [...qq.rows, ''] } : qq);
+                      setLocalQuestions(newQuestions);
+                      setQuestions(newQuestions);
                     }}
                   >
                     <Plus className="w-4 h-4 mr-1" /> Add Row
@@ -256,7 +291,7 @@ function ScreeningQuestionsModule() {
                 </div>
                 {/* Columns column */}
                 <div className="flex flex-col flex-1">
-                  {q.columns.map((col, cIdx) => (
+                  {q.columns.map((col: string, cIdx: number) => (
                     <div key={cIdx} className="relative flex items-center group mb-2 mt-2">
                       <input
                         className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent text-[13px] placeholder:text-slate-500"
@@ -265,17 +300,21 @@ function ScreeningQuestionsModule() {
                         onChange={e => {
                           const newCols = [...q.columns];
                           newCols[cIdx] = e.target.value;
-                          setQuestions(prev => prev.map((qq, i) => i === qIdx ? { ...qq, columns: newCols } : qq));
+                          const updated = localQuestions.map((qq: Question, i: number) => i === qIdx ? { ...qq, columns: newCols } : qq);
+                          setLocalQuestions(updated);
                         }}
+                        onBlur={() => setQuestions(localQuestions)}
                       />
                       {q.columns.length > 1 && (
                         <button
                           type="button"
                           className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={() => {
-                            setQuestions(prev => prev.map((qq, i) =>
-                              i === qIdx ? { ...qq, columns: qq.columns.filter((_, idx) => idx !== cIdx) } : qq
-                            ));
+                            const newQuestions = localQuestions.map((qq: Question, i: number) =>
+                              i === qIdx ? { ...qq, columns: qq.columns.filter((_: string, idx: number) => idx !== cIdx) } : qq
+                            );
+                            setLocalQuestions(newQuestions);
+                            setQuestions(newQuestions);
                           }}
                           tabIndex={-1}
                         >
@@ -288,7 +327,9 @@ function ScreeningQuestionsModule() {
                     type="button"
                     className="text-[#2927B2] font-medium text-xs flex items-center mt-1"
                     onClick={() => {
-                      setQuestions(prev => prev.map((qq, i) => i === qIdx ? { ...qq, columns: [...qq.columns, ''] } : qq));
+                      const newQuestions = localQuestions.map((qq: Question, i: number) => i === qIdx ? { ...qq, columns: [...qq.columns, ''] } : qq);
+                      setLocalQuestions(newQuestions);
+                      setQuestions(newQuestions);
                     }}
                   >
                     <Plus className="w-4 h-4 mr-1" /> Add Column
@@ -298,13 +339,14 @@ function ScreeningQuestionsModule() {
             </>
           ) : (
             <>
-              {q.answers.map((a, aIdx) => (
+              {q.answers.map((a: string, aIdx: number) => (
                 <input
                   key={aIdx}
                   className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent text-[13px] mt-2 placeholder:text-slate-500"
                   placeholder={`Answer ${aIdx + 1}`}
                   value={a}
                   onChange={(e) => handleAnswerChange(qIdx, aIdx, e.target.value)}
+                  onBlur={() => setQuestions(localQuestions)}
                 />
               ))}
               <button
