@@ -1260,7 +1260,7 @@ export function WorkflowBuilder() {
               onClick={() => setPreviewMode(!previewMode)}
               className={`flex items-center space-x-2 px-4 py-2 rounded-xl transition-colors ${
                 previewMode
-                  ? 'bg-green-100 text-green-700'
+                  ? 'bg-[#EAE8FB] border border-[#2927B2]'
                   : 'bg-white text-[#2927B2] border border-[#8C95A8] hover:bg-slate-200'
               }`}
             >
