@@ -217,8 +217,8 @@ export function ActivityConfigurator() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Templates List */}
-        <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-slate-200 p-6 shadow-sm">
-          <div className="space-y-3">
+        <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-slate-200 p-4 shadow-sm">
+          <div className="space-y-2">
             {state.activityTemplates.map((template) => {
               const IconComponent = getIconComponent(template.icon, template.customIconSvg);
               const iconColor = getIconColor(template.iconColor || 'purple');
@@ -227,7 +227,7 @@ export function ActivityConfigurator() {
               return (
                 <div
                   key={template.id}
-                  className={`p-4 border rounded-lg cursor-pointer transition-all duration-200 ${
+                  className={`p-2 border rounded-xl cursor-pointer transition-all duration-200 ${
                     editingTemplate?.id === template.id
                       ? 'border-[#4D3EE0] bg-blue-50'
                       : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
@@ -243,7 +243,7 @@ export function ActivityConfigurator() {
                         <IconComponent className="w-4 h-4" style={{ color: iconColor.iconColor, ...(isCondition ? { transform: 'rotate(90deg)' } : {}) }} />
                       </div>
                       <div>
-                        <h3 className="font-medium text-slate-900">{template.name}</h3>
+                        <h3 className="font-medium text-[15px] text-slate-900">{template.name}</h3>
                       </div>
                     </div>
                     <div className="relative flex items-center">
@@ -281,7 +281,7 @@ export function ActivityConfigurator() {
         </div>
 
         {/* Template Editor */}
-        <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-slate-200 p-6 shadow-sm">
+        <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-slate-200 p-4 shadow-sm">
           {editingTemplate ? (
             <TemplateEditor
               template={editingTemplate}
@@ -293,11 +293,14 @@ export function ActivityConfigurator() {
               activityTemplates={state.activityTemplates} // Pass all templates
             />
           ) : (
-            <div className="text-center py-12">
-              <Lucide.Settings className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-slate-900 mb-2">Select a Template</h3>
-              <p className="text-slate-600">Choose a template from the list to edit its configuration</p>
-            </div>
+            <div className="text-center py-48">
+  <div className="w-12 h-12 mx-auto mb-4 flex items-center justify-center rounded-xl bg-slate-100">
+    <Lucide.Settings className="w-6 h-6 text-slate-500" />
+  </div>
+  <h3 className="text-lg font-semibold text-slate-700 mb-0.5">Select a Template</h3>
+  <p className="text-slate-500 text-md">Choose a template from the list to edit it</p>
+</div>
+
           )}
         </div>
       </div>
@@ -818,7 +821,7 @@ function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePrevi
           disabled={loading}
           className="px-4 py-1 bg-[#4D3EE0] text-white text-sm rounded-xl hover:bg-[#2927B2]  flex items-center space-x-2 disabled:opacity-50"
         >
-          <span>Save changes</span>
+          <span>Save template changes</span>
         </button>
       </div>
     </div>
