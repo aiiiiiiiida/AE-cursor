@@ -1087,6 +1087,88 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
 
   const canHaveConditionalFollowUps = ['dropdown', 'toggle', 'radio', 'checkbox'].includes(element.type);
 
+  // --- Conditions Module Options Editor ---
+  // Helper to generate a unique value from label
+  function generateUniqueValue(label: string, existing: string[], base?: string): string {
+    let val = (base || label).toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    let unique = val;
+    let i = 1;
+    while (existing.includes(unique)) {
+      unique = val + '_' + i;
+      i++;
+    }
+    return unique;
+  }
+
+  const handleAddPropertyOption = () => {
+    const current = element.propertyOptions || [];
+    onUpdate({ propertyOptions: [...current, { label: '', value: '', values: ['', ''] }] });
+  };
+  const handleUpdatePropertyOption = (idx: number, updates: Partial<{ label: string; values: string[] }>) => {
+    const current = element.propertyOptions || [];
+    let updated = current.map((opt, i) => {
+      if (i !== idx) return opt;
+      let newLabel = updates.label !== undefined ? updates.label : opt.label;
+      let newValue = opt.value;
+      if (updates.label !== undefined) {
+        // Generate unique value from label
+        const others = current.filter((_, j) => j !== idx).map(o => o.value);
+        newValue = generateUniqueValue(newLabel, others);
+      }
+      return { ...opt, ...updates, value: newValue };
+    });
+    onUpdate({ propertyOptions: updated });
+  };
+  const handleRemovePropertyOption = (idx: number) => {
+    const current = element.propertyOptions || [];
+    const updated = current.filter((_, i) => i !== idx);
+    onUpdate({ propertyOptions: updated });
+  };
+  const handleAddOperatorOption = () => {
+    const current = element.operatorOptions || [];
+    onUpdate({ operatorOptions: [...current, { label: '', value: '' }] });
+  };
+  const handleUpdateOperatorOption = (idx: number, updates: Partial<{ label: string }>) => {
+    const current = element.operatorOptions || [];
+    let updated = current.map((opt, i) => {
+      if (i !== idx) return opt;
+      let newLabel = updates.label !== undefined ? updates.label : opt.label;
+      let newValue = opt.value;
+      if (updates.label !== undefined) {
+        // Generate unique value from label
+        const others = current.filter((_, j) => j !== idx).map(o => o.value);
+        newValue = generateUniqueValue(newLabel, others);
+      }
+      return { ...opt, ...updates, value: newValue };
+    });
+    onUpdate({ operatorOptions: updated });
+  };
+  const handleRemoveOperatorOption = (idx: number) => {
+    const current = element.operatorOptions || [];
+    const updated = current.filter((_, i) => i !== idx);
+    onUpdate({ operatorOptions: updated });
+  };
+
+  const handleUpdatePropertyOptionValue = (propIdx: number, valueIdx: number, newValue: string) => {
+    const current = element.propertyOptions || [];
+    const prop = current[propIdx];
+    const newValues = [...(prop.values || [])];
+    newValues[valueIdx] = newValue;
+    handleUpdatePropertyOption(propIdx, { values: newValues });
+  };
+  const handleAddPropertyOptionValue = (propIdx: number) => {
+    const current = element.propertyOptions || [];
+    const prop = current[propIdx];
+    const newValues = [...(prop.values || []), ''];
+    handleUpdatePropertyOption(propIdx, { values: newValues });
+  };
+  const handleRemovePropertyOptionValue = (propIdx: number, valueIdx: number) => {
+    const current = element.propertyOptions || [];
+    const prop = current[propIdx];
+    const newValues = (prop.values || []).filter((_, i) => i !== valueIdx);
+    handleUpdatePropertyOption(propIdx, { values: newValues });
+  };
+
   return (
     <div className="p-4 border border-slate-200 rounded-lg bg-slate-50">
       {/* Tab Selector Dropdown */}
@@ -1892,6 +1974,106 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
               + Add Event
             </button>
           </div>
+        </div>
+      )}
+      {/* --- Conditions Module Configurable Options --- */}
+      {element.type === 'conditions-module' && (
+        <div className="mb-4">
+          <div className="mb-2 font-semibold text-xs text-slate-700">Property Options</div>
+          <div className="space-y-4 mb-2">
+            {(element.propertyOptions || []).map((opt, idx) => (
+              <div key={idx} className="flex flex-col gap-1 border border-slate-200 rounded-lg p-2 bg-slate-50">
+                <div className="relative flex items-center">
+                  <input
+                    type="text"
+                    className="px-3 py-2 border border-[#8C95A8] rounded-lg text-xs w-full pr-8"
+                    placeholder="Label"
+                    value={opt.label}
+                    onChange={e => handleUpdatePropertyOption(idx, { label: e.target.value })}
+                    disabled={disabled}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 p-1"
+                    onClick={() => handleRemovePropertyOption(idx)}
+                    disabled={disabled}
+                    aria-label="Remove property option"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="ml-0 mt-1">
+                  <div className="text-[10px] text-slate-500 mb-1">Possible Values</div>
+                  <div className="flex flex-col gap-1 items-start w-full">
+                    {(opt.values || []).map((val, vIdx) => (
+                      <div key={vIdx} className="relative flex items-center w-full">
+                        <input
+                          type="text"
+                          className="px-3 py-2 border border-[#8C95A8] rounded-lg text-xs w-full pr-8"
+                          placeholder={`Value ${vIdx + 1}`}
+                          value={val}
+                          onChange={e => handleUpdatePropertyOptionValue(idx, vIdx, e.target.value)}
+                          disabled={disabled}
+                        />
+                        <button
+                          type="button"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 p-1"
+                          onClick={() => handleRemovePropertyOptionValue(idx, vIdx)}
+                          disabled={disabled}
+                          aria-label="Remove value"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      className="text-xs text-[#2927B2] font-medium hover:text-[#1C1876]"
+                      onClick={() => handleAddPropertyOptionValue(idx)}
+                      disabled={disabled}
+                    >+ Add Value</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="text-xs text-[#2927B2] font-medium hover:text-[#1C1876]"
+            onClick={handleAddPropertyOption}
+            disabled={disabled}
+          >+ Add Property Option</button>
+
+          <div className="mt-4 mb-2 font-semibold text-xs text-slate-700">Operator Options</div>
+          <div className="space-y-2 mb-2">
+            {(element.operatorOptions || []).map((opt, idx) => (
+              <div key={idx} className="relative flex items-center">
+                <input
+                  type="text"
+                  className="px-3 py-2 border border-[#8C95A8] rounded-lg text-xs w-full pr-8"
+                  placeholder="Label"
+                  value={opt.label}
+                  onChange={e => handleUpdateOperatorOption(idx, { label: e.target.value })}
+                  disabled={disabled}
+                />
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 p-1"
+                  onClick={() => handleRemoveOperatorOption(idx)}
+                  disabled={disabled}
+                  aria-label="Remove operator option"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            className="text-xs text-[#2927B2] font-medium hover:text-[#1C1876]"
+            onClick={handleAddOperatorOption}
+            disabled={disabled}
+          >+ Add Operator Option</button>
         </div>
       )}
     </div>

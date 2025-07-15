@@ -39,6 +39,9 @@ export interface UIElement {
   title?: string;
   addedElements?: UIElement[];
   events?: EventCard[]; // For events-module only
+  // Add these fields for conditions-module
+  propertyOptions?: Array<{ label: string; value: string; values: string[] }>;
+  operatorOptions?: Array<{ label: string; value: string }>;
 }
 
 export interface ActivityTemplate {
@@ -87,6 +90,7 @@ export interface Workflow {
   version?: number;
   locale?: string;
   creator?: string;
+  metadata?: Record<string, any>; // <-- Add this line
 }
 
 export interface AppState {

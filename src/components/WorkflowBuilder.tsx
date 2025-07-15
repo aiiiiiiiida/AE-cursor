@@ -159,6 +159,8 @@ export function WorkflowBuilder() {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [editingBranch, setEditingBranch] = useState<string | null>(null);
   const [editingBranchValue, setEditingBranchValue] = useState<string>('');
+  const [availableActivityIds, setAvailableActivityIds] = useState<string[]>([]);
+  const [showAvailableActivitiesModal, setShowAvailableActivitiesModal] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -171,6 +173,35 @@ export function WorkflowBuilder() {
     dispatch({ type: 'SELECT_NODE', payload: null });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workflowId]);
+
+  useEffect(() => {
+    if (workflow?.metadata?.availableActivityIds) {
+      setAvailableActivityIds(workflow.metadata.availableActivityIds);
+    } else if (workflow) {
+      setAvailableActivityIds(
+        state.activityTemplates
+          .filter(a => !(a.name.toLowerCase().includes('trigger') || a.icon === 'Zap'))
+          .map(a => a.id)
+      );
+    }
+  }, [workflow, state.activityTemplates]);
+
+  // Save available activities to workflow metadata
+  const saveAvailableActivities = async (newIds: string[]) => {
+    if (!workflow) return;
+    // Only update if changed
+    if (JSON.stringify(workflow.metadata?.availableActivityIds || []) !== JSON.stringify(newIds)) {
+      const updatedWorkflow = {
+        ...workflow,
+        metadata: {
+          ...workflow.metadata,
+          availableActivityIds: newIds
+        }
+      };
+      dispatch({ type: 'UPDATE_WORKFLOW', payload: updatedWorkflow });
+      await updateWorkflow(updatedWorkflow);
+    }
+  };
 
   // Memoize centerCanvas function to prevent initialization issues
   const centerCanvas = useCallback(() => {
@@ -1056,9 +1087,9 @@ export function WorkflowBuilder() {
 
   const confirmDeleteWorkflow = async () => {
     if (!workflow) return;
+    navigate('/'); // Redirect first, before any state changes or async
     await deleteWorkflow(workflow.id);
     setShowDeleteModal(false);
-    navigate('/');
   };
 
   const cancelDeleteWorkflow = () => {
@@ -1269,7 +1300,7 @@ export function WorkflowBuilder() {
             <button 
               onClick={handleSaveWorkflow}
               disabled={isSaving}
-              className="flex items-center space-x-2 px-4 py-2 bg-[#4D3EE0] text-white rounded-xl hover:bg-[#2927B2] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center space-x-2  px-4 py-2 bg-[#4D3EE0] text-white rounded-xl hover:bg-[#2927B2] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSaving ? (
                 <>
@@ -1292,10 +1323,17 @@ export function WorkflowBuilder() {
                 <MoreVertical className="w-5 h-5" />
               </button>
               {showMenu && (
-                <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                <div className="absolute right-0 mt-2 pt-1 pb-1 w-56 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
+                  <button
+                    onClick={() => { setShowAvailableActivitiesModal(true); setShowMenu(false); }}
+                    className="w-full text-sm text-left px-4 py-2 text-slate-600 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <Settings className="w-4 h-4 text-xs text-slate-500" />
+                    <span>Available activities</span>
+                  </button>
                   <button
                     onClick={handleDeleteWorkflow}
-                    className="w-full text-left px-4 py-2 text-slate-600 hover:bg-red-50 rounded-t-lg flex items-center gap-2"
+                    className="w-full text-sm text-left px-4 py-2 text-slate-600 hover:bg-red-50 rounded-t-lg flex items-center gap-2"
                   >
                     <Trash2 className="w-4 h-4 text-xs text-red-500" />
                     <span>Delete workflow</span>
@@ -1569,7 +1607,7 @@ export function WorkflowBuilder() {
       {showActivityDropdown && activityDropdownPosition && ReactDOM.createPortal(
         <ActivityDropdown
           position={activityDropdownPosition}
-          activities={state.activityTemplates}
+          activities={state.activityTemplates.filter(a => (workflow?.metadata?.availableActivityIds || availableActivityIds).includes(a.id))}
           onSelect={handleSelectActivity}
           onClose={() => setShowActivityDropdown(false)}
           searchTerm={searchTerm}
@@ -1623,6 +1661,90 @@ export function WorkflowBuilder() {
                 onClick={confirmDeleteWorkflow}
               >
                 Delete workflow
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showAvailableActivitiesModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30" onClick={async () => { await saveAvailableActivities(availableActivityIds); setShowAvailableActivitiesModal(false); }}>
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-0 flex flex-col"
+            style={{ minWidth: 380 }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 pt-5 pb-4">
+              <h2 className="text-lg font-semibold text-[#3A3F4B]">Available activities</h2>
+              <button
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-full focus:outline-none"
+                onClick={async () => { await saveAvailableActivities(availableActivityIds); setShowAvailableActivitiesModal(false); }}
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {/* Divider */}
+            <div className="border-t border-slate-200 w-full" />
+            {/* Activities List - grouped by category, show category label, no description */}
+            <div className="px-6 py-6 max-h-96 overflow-y-auto">
+              <div className="text-sm text-[#3A3F4B] mb-4">
+                Select the activities that show up when you add new activities to the workflow.
+              </div>
+              {(() => {
+                const activities = state.activityTemplates.filter(a => !(a.name.toLowerCase().includes('trigger') || a.icon === 'Zap'));
+                // Group by category
+                const grouped: Record<string, typeof activities> = activities.reduce((acc, act) => {
+                  if (!acc[act.category]) acc[act.category] = [];
+                  acc[act.category].push(act);
+                  return acc;
+                }, {} as Record<string, typeof activities>);
+                const sortedCategories = Object.keys(grouped).sort();
+                return sortedCategories.length === 0 ? (
+                  <div className="text-center text-slate-500 py-8">No activities found.</div>
+                ) : (
+                  sortedCategories.map(category => (
+                    <div key={category} className="mb-2">
+                      <div className="text-[10px] font-semibold text-[#8C95A8] uppercase tracking-wider px-3 py-1 bg-[#F5F7FA] rounded mb-1">{category}</div>
+                      {grouped[category].map(activity => {
+                        const IconComponent = AVAILABLE_ICONS.find(i => i.name === activity.icon)?.component || Settings;
+                        const iconColor = ICON_COLORS.find(c => c.value === (activity.iconColor || 'purple')) || ICON_COLORS[0];
+                        return (
+                          <label key={activity.id} className="flex items-center gap-3 py-2 cursor-pointer hover:bg-slate-50 rounded-lg px-2">
+                            <input
+                              type="checkbox"
+                              checked={availableActivityIds.includes(activity.id)}
+                              onChange={e => {
+                                setAvailableActivityIds(ids =>
+                                  e.target.checked
+                                    ? [...ids, activity.id]
+                                    : ids.filter(id => id !== activity.id)
+                                );
+                              }}
+                              className="accent-[#4D3EE0] w-4 h-4"
+                            />
+                            <span className="w-6 h-6 rounded-[8px] flex items-center justify-center" style={{ backgroundColor: iconColor.bg }}>
+                              <IconComponent className="w-4 h-4" style={{ color: iconColor.iconColor }} />
+                            </span>
+                            <span className="font-medium text-[#353B46] text-sm">{activity.name}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  ))
+                );
+              })()}
+            </div>
+            {/* Divider */}
+            <div className="border-t border-slate-200 w-full" />
+            {/* Buttons */}
+            <div className="flex justify-end space-x-4 px-6 py-4">
+              <button
+                className="h-10 px-4 rounded-xl border border-[#8C95A8] text-[#2927B2] text-sm font-medium bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#4D3EE0]"
+                style={{ fontSize: 14 }}
+                onClick={async () => { await saveAvailableActivities(availableActivityIds); setShowAvailableActivitiesModal(false); }}
+              >
+                Close
               </button>
             </div>
           </div>
@@ -2159,6 +2281,86 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove, tabSelector, onT
   };
 
   const canHaveConditionalFollowUps = ['dropdown', 'toggle', 'radio', 'checkbox'].includes(element.type);
+
+  // --- Conditions Module Options Editor (for editing mode in side panel) ---
+  // Helper to generate a unique value from label
+  function generateUniqueValue(label: string, existing: string[], base?: string): string {
+    let val = (base || label).toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    let unique = val;
+    let i = 1;
+    while (existing.includes(unique)) {
+      unique = val + '_' + i;
+      i++;
+    }
+    return unique;
+  }
+
+  const handleAddPropertyOption = () => {
+    const current = element.propertyOptions || [];
+    onUpdate(element.id, { propertyOptions: [...current, { label: '', value: '', values: ['', ''] }] });
+  };
+  const handleUpdatePropertyOption = (idx: number, updates: Partial<{ label: string; value: string; values: string[] }>) => {
+    const current = element.propertyOptions || [];
+    const updated = current.map((opt, i) => {
+      if (i !== idx) return opt;
+      let newLabel = updates.label !== undefined ? updates.label : opt.label;
+      let newValue = opt.value;
+      if (updates.label !== undefined) {
+        // Regenerate value from label
+        const existing = current.filter((_, j) => j !== idx).map(o => o.value);
+        newValue = generateUniqueValue(updates.label, existing);
+      }
+      return { ...opt, ...updates, label: newLabel, value: newValue };
+    });
+    onUpdate(element.id, { propertyOptions: updated });
+  };
+  const handleRemovePropertyOption = (idx: number) => {
+    const current = element.propertyOptions || [];
+    onUpdate(element.id, { propertyOptions: current.filter((_, i) => i !== idx) });
+  };
+  const handleUpdatePropertyOptionValue = (propIdx: number, valueIdx: number, newValue: string) => {
+    const current = element.propertyOptions || [];
+    const prop = current[propIdx];
+    const newValues = [...(prop.values || [])];
+    newValues[valueIdx] = newValue;
+    handleUpdatePropertyOption(propIdx, { values: newValues });
+  };
+  const handleAddPropertyOptionValue = (propIdx: number) => {
+    const current = element.propertyOptions || [];
+    const prop = current[propIdx];
+    const newValues = [...(prop.values || []), ''];
+    handleUpdatePropertyOption(propIdx, { values: newValues });
+  };
+  const handleRemovePropertyOptionValue = (propIdx: number, valueIdx: number) => {
+    const current = element.propertyOptions || [];
+    const prop = current[propIdx];
+    const newValues = (prop.values || []).filter((_, i) => i !== valueIdx);
+    handleUpdatePropertyOption(propIdx, { values: newValues });
+  };
+  // Operator options
+  const handleAddOperatorOption = () => {
+    const current = element.operatorOptions || [];
+    onUpdate(element.id, { operatorOptions: [...current, { label: '', value: '' }] });
+  };
+  const handleUpdateOperatorOption = (idx: number, updates: Partial<{ label: string; value: string }>) => {
+    const current = element.operatorOptions || [];
+    const updated = current.map((opt, i) => {
+      if (i !== idx) return opt;
+      let newLabel = updates.label !== undefined ? updates.label : opt.label;
+      let newValue = opt.value;
+      if (updates.label !== undefined) {
+        // Regenerate value from label
+        const existing = current.filter((_, j) => j !== idx).map(o => o.value);
+        newValue = generateUniqueValue(updates.label, existing);
+      }
+      return { ...opt, ...updates, label: newLabel, value: newValue };
+    });
+    onUpdate(element.id, { operatorOptions: updated });
+  };
+  const handleRemoveOperatorOption = (idx: number) => {
+    const current = element.operatorOptions || [];
+    onUpdate(element.id, { operatorOptions: current.filter((_, i) => i !== idx) });
+  };
 
   return (
     <div className="p-3 border border-slate-200 rounded-lg bg-slate-50">
@@ -2945,6 +3147,105 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove, tabSelector, onT
               }}
             >
               + Add Event
+            </button>
+          </div>
+        </div>
+      )}
+      {/* Conditions Module property/operator options editor (editing mode) */}
+      {element.type === 'conditions-module' && (
+        <div className="mb-4">
+          <div className="mb-2 font-semibold text-xs text-slate-700">Property Options</div>
+          <div className="space-y-4 mb-2">
+            {(element.propertyOptions || []).map((opt, idx) => (
+              <div key={idx} className="flex flex-col gap-1 border border-slate-200 rounded p-2 bg-slate-50">
+                <div className="relative flex items-center w-full">
+                  <input
+                    type="text"
+                    className="px-3 py-2 border rounded text-xs w-full pr-8"
+                    placeholder="Label"
+                    value={opt.label}
+                    onChange={e => handleUpdatePropertyOption(idx, { label: e.target.value })}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-red-500"
+                    onClick={() => handleRemovePropertyOption(idx)}
+                    tabIndex={-1}
+                    aria-label="Remove property option"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="ml-0 mt-1">
+                  <div className="text-[10px] text-slate-500 mb-1">Possible Values</div>
+                  <div className="flex flex-col gap-1 items-start w-full">
+                    {(opt.values || []).map((val, vIdx) => (
+                      <div key={vIdx} className="relative flex items-center w-full">
+                        <input
+                          type="text"
+                          className="px-3 py-2 border rounded text-xs w-full pr-8"
+                          placeholder={`Value ${vIdx + 1}`}
+                          value={val}
+                          onChange={e => handleUpdatePropertyOptionValue(idx, vIdx, e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-red-500"
+                          onClick={() => handleRemovePropertyOptionValue(idx, vIdx)}
+                          tabIndex={-1}
+                          aria-label="Remove value"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      className="text-xs text-[#2927B2] font-medium hover:text-[#1C1876]"
+                      onClick={() => handleAddPropertyOptionValue(idx)}
+                    >
+                      + Add Value
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+            <button
+              type="button"
+              className="text-xs text-[#2927B2] font-medium hover:text-[#1C1876]"
+              onClick={handleAddPropertyOption}
+            >
+              + Add Property Option
+            </button>
+          </div>
+          <div className="mb-2 font-semibold text-xs text-slate-700">Operator Options</div>
+          <div className="space-y-2 mb-2">
+            {(element.operatorOptions || []).map((opt, idx) => (
+              <div key={idx} className="relative flex items-center w-full">
+                <input
+                  type="text"
+                  className="px-3 py-2 border rounded text-xs w-full pr-8"
+                  placeholder="Label"
+                  value={opt.label}
+                  onChange={e => handleUpdateOperatorOption(idx, { label: e.target.value })}
+                />
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-red-500"
+                  onClick={() => handleRemoveOperatorOption(idx)}
+                  tabIndex={-1}
+                  aria-label="Remove operator option"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              className="text-xs text-[#2927B2] font-medium hover:text-[#1C1876]"
+              onClick={handleAddOperatorOption}
+            >
+              + Add Operator Option
             </button>
           </div>
         </div>

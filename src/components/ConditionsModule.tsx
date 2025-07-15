@@ -1,40 +1,11 @@
 import React, { useState, useRef } from 'react';
 import { Plus, Split, ChevronDown, Trash2, X } from 'lucide-react';
 
-const PROPERTY_OPTIONS = [
-  { label: 'Job ID', value: 'jobID', values: ['302', '203', '504'] },
-  { label: 'Department', value: 'department', values: ['Engineering', 'HR', 'Sales'] },
-  { label: 'Country', value: 'country', values: ['US', 'Canada'] },
-  { label: 'Profile skills', value: 'profileSkills', values: ['empty', 'less than 5', 'more than 5'] },
-  { label: 'City', value: 'city', values: ['Bucharest', 'Oslo'] },
-];
-
-const OPERATOR_OPTIONS = [
-  { label: 'is', value: 'is' },
-  { label: 'is not', value: 'is_not' },
-  { label: 'contains', value: 'contains' },
-];
-
-const LOGIC_OPTIONS = [
-  { label: 'OR', value: 'or' },
-  { label: 'AND', value: 'and' },
-];
-
-type ConditionLine = {
-  property?: string;
-  operator: string;
-  value: string;
-  logic?: string;
-};
-
-type ConditionGroup = {
-  lines: ConditionLine[];
-  groupLogic?: string;
-};
-
-export default function ConditionsModule({ branches: propBranches, onBranchesChange }: {
+export default function ConditionsModule({ branches: propBranches, onBranchesChange, propertyOptions, operatorOptions }: {
   branches?: any[];
   onBranchesChange?: (branches: any[]) => void;
+  propertyOptions?: Array<{ label: string; value: string; values: string[] }>;
+  operatorOptions?: Array<{ label: string; value: string }>;
 } = {}) {
   const [outerLogic, setOuterLogic] = React.useState<string>('or');
   const [editingBranchIdx, setEditingBranchIdx] = useState<number | null>(null);
@@ -145,6 +116,38 @@ export default function ConditionsModule({ branches: propBranches, onBranchesCha
   const getPropertyValues = (property: string) => {
     const prop = PROPERTY_OPTIONS.find(p => p.value === property);
     return prop ? prop.values : [];
+  };
+
+  // Use configurable options if provided, otherwise fallback to defaults
+  const PROPERTY_OPTIONS = propertyOptions || [
+    { label: 'Job ID', value: 'jobID', values: ['302', '203', '504'] },
+    { label: 'Department', value: 'department', values: ['Engineering', 'HR', 'Sales'] },
+    { label: 'Country', value: 'country', values: ['US', 'Canada'] },
+    { label: 'Profile skills', value: 'profileSkills', values: ['empty', 'less than 5', 'more than 5'] },
+    { label: 'City', value: 'city', values: ['Bucharest', 'Oslo'] },
+  ];
+
+  const OPERATOR_OPTIONS = operatorOptions || [
+    { label: 'is', value: 'is' },
+    { label: 'is not', value: 'is_not' },
+    { label: 'contains', value: 'contains' },
+  ];
+
+  const LOGIC_OPTIONS = [
+    { label: 'OR', value: 'or' },
+    { label: 'AND', value: 'and' },
+  ];
+
+  type ConditionLine = {
+    property?: string;
+    operator: string;
+    value: string;
+    logic?: string;
+  };
+
+  type ConditionGroup = {
+    lines: ConditionLine[];
+    groupLogic?: string;
   };
 
   return (

@@ -401,7 +401,12 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
           };
           return (
             <div key={element.id} className="md:col-span-2">
-              <ConditionsModule branches={branches} onBranchesChange={handleBranchesChange} />
+              <ConditionsModule
+                branches={branches}
+                onBranchesChange={handleBranchesChange}
+                propertyOptions={element.propertyOptions}
+                operatorOptions={element.operatorOptions}
+              />
             </div>
           );
         }
