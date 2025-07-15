@@ -1647,6 +1647,22 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
   const [editingBranchName, setEditingBranchName] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'Configuration' | 'Advanced' | 'User Interface'>('Configuration');
 
+  // Local state for buffered editing
+  const [localActivityName, setLocalActivityName] = useState(node.userAssignedName || template?.name || '');
+  const [localSidePanelDescription, setLocalSidePanelDescription] = useState(node.sidePanelDescription || template?.sidePanelDescription || '');
+  const [localMapDescription, setLocalMapDescription] = useState(node.mapDescription || template?.description || '');
+
+  // Keep local state in sync with node/template changes
+  useEffect(() => {
+    setLocalActivityName(node.userAssignedName || template?.name || '');
+  }, [node.userAssignedName, template?.name]);
+  useEffect(() => {
+    setLocalSidePanelDescription(node.sidePanelDescription || template?.sidePanelDescription || '');
+  }, [node.sidePanelDescription, template?.sidePanelDescription]);
+  useEffect(() => {
+    setLocalMapDescription(node.mapDescription || template?.description || '');
+  }, [node.mapDescription, template?.description]);
+
   if (!template) {
     return <div className="text-slate-500">Template not found</div>;
   }
@@ -1770,8 +1786,13 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
             </label>
             <input
               type="text"
-              value={node.userAssignedName || template.name}
-              onChange={(e) => onUpdate({ userAssignedName: e.target.value })}
+              value={localActivityName}
+              onChange={e => setLocalActivityName(e.target.value)}
+              onBlur={() => {
+                if (localActivityName !== (node.userAssignedName || template.name)) {
+                  onUpdate({ userAssignedName: localActivityName });
+                }
+              }}
               className="w-full px-3 py-1 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Enter activity name"
             />
@@ -1783,8 +1804,13 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
               Side Panel Description
             </label>
             <textarea
-              value={node.sidePanelDescription || template.sidePanelDescription || ''}
-              onChange={(e) => onUpdate({ sidePanelDescription: e.target.value })}
+              value={localSidePanelDescription}
+              onChange={e => setLocalSidePanelDescription(e.target.value)}
+              onBlur={() => {
+                if (localSidePanelDescription !== (node.sidePanelDescription || template.sidePanelDescription)) {
+                  onUpdate({ sidePanelDescription: localSidePanelDescription });
+                }
+              }}
               className="w-full px-3 py-1 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               rows={2}
               placeholder="Description shown in the side panel"
@@ -1797,8 +1823,13 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
                 Map Description
               </label>
               <MapDescriptionInput
-                value={node.mapDescription || template.description || ''}
-                onChange={(value) => onUpdate({ mapDescription: value })}
+                value={localMapDescription}
+                onChange={setLocalMapDescription}
+                onBlur={() => {
+                  if (localMapDescription !== (node.mapDescription || template.description)) {
+                    onUpdate({ mapDescription: localMapDescription });
+                  }
+                }}
                 uiElements={currentElements}
               />
             </div>
@@ -1886,10 +1917,11 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
 interface MapDescriptionInputProps {
   value: string;
   onChange: (value: string) => void;
+  onBlur?: () => void;
   uiElements: UIElement[];
 }
 
-function MapDescriptionInput({ value, onChange, uiElements }: MapDescriptionInputProps) {
+function MapDescriptionInput({ value, onChange, onBlur, uiElements }: MapDescriptionInputProps) {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [cursorPosition, setCursorPosition] = useState(0);
   const [suggestionPosition, setSuggestionPosition] = useState({ top: 0, left: 0 });
@@ -2011,6 +2043,7 @@ function MapDescriptionInput({ value, onChange, uiElements }: MapDescriptionInpu
         ref={textareaRef}
         value={value}
         onChange={handleTextChange}
+        onBlur={onBlur}
         onKeyDown={handleKeyDown}
         className="w-full px-3 py-2 border border-slate-300 rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         rows={2}
