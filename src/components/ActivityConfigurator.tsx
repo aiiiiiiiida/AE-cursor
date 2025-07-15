@@ -75,19 +75,26 @@ export function ActivityConfigurator() {
         category: 'Workflow',
         sidePanelDescription: 'Configure when this workflow should start',
         sidePanelElements: [
+          { type: 'section-divider', label: 'Setup', id: 'setup-divider' },
+          { type: 'dropdown', label: 'Locale', id: 'locale', options: ['en_US', 'en_UK'], multiselect: true, placeholder: 'Select locale', required: false },
+          { type: 'dropdown', label: 'Site type', id: 'site-type', options: ['internal', 'external'], multiselect: true, placeholder: 'Select site type', required: false },
+          { type: 'section-divider', label: 'Attributes', id: 'attributes-divider' },
           {
-            id: 'trigger-type',
-            type: 'dropdown',
-            label: 'Trigger Type',
-            options: ['Manual', 'Schedule', 'Webhook', 'Email Received', 'File Upload'],
-            required: true
-          },
-          {
-            id: 'trigger-condition',
-            type: 'text',
-            label: 'Trigger Condition',
-            placeholder: 'Enter trigger condition',
-            required: false
+            type: 'trigger-conditions-module',
+            id: 'trigger-conditions',
+            label: 'Trigger Conditions',
+            propertyOptions: [
+              { label: 'Job ID', value: 'job_id', values: ['302', '304', '306'] },
+              { label: 'Country', value: 'country', values: ['US', 'Canada'] },
+              { label: 'Employee tenure', value: 'employee_tenure', values: ['less than 2 weeks', 'more than 2 weeks'] },
+              { label: 'City', value: 'city', values: ['New York', 'Philadelphia', 'Oslo', 'Bucharest'] }
+            ],
+            operatorOptions: [
+              { label: 'is', value: 'is' },
+              { label: 'is not', value: 'is_not' },
+              { label: 'contains', value: 'contains' },
+              { label: 'does not contain', value: 'does_not_contain' }
+            ]
           }
         ]
       });
@@ -631,106 +638,109 @@ function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePrevi
                 disabled={loading}
               />
             </div>
-            <div className="flex items-center justify-between mb-2">
-  <label className="block text-sm font-medium text-slate-700">Icon</label>
-  <div className="flex items-center">
-    <div className="flex rounded-xl bg-white border border-slate-200 p-0.5">
-      {["purple", "orange"].map((color) => {
-        const colorConfig = ICON_COLORS.find(c => c.value === color);
-        const isSelected = (editedTemplate.iconColor || 'purple') === color;
-        return (
-          <button
-            key={color}
-            type="button"
-            onClick={() => setEditedTemplate({ ...editedTemplate, iconColor: color })}
-            className={`flex flex-row items-center gap-1 px-2 py-1 rounded-lg focus:outline-none transition-all duration-200 ${
-              isSelected ? 'bg-white border border-[#4D3EE0] shadow-sm' : 'bg-transparent border border-transparent'
-            }`}
-            style={{ minWidth: 40 }}
-            aria-label={colorConfig?.name}
-          >
-            <span
-              className="w-2 h-2 rounded-full"
-              style={{ backgroundColor: colorConfig?.iconColor }}
-            />
-            <span
-              className="text-[10px] font-medium text-slate-600"
-              
-            >
-              {colorConfig?.name}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  </div>
-</div>
-
-            <div className="flex flex-wrap gap-1 mb-4">
-              {AVAILABLE_ICONS.map((iconOption) => {
-                const IconComponent = getIconComponent(iconOption.name, editedTemplate.customIconSvg);
-                const isSelected = editedTemplate.icon === iconOption.name;
-                const iconColor = ICON_COLORS.find(c => c.value === (editedTemplate.iconColor || 'purple')) || ICON_COLORS[0];
-                const isCondition = iconOption.name === 'Split';
-                return (
-                  <button
-                    key={iconOption.name}
-                    type="button"
-                    onClick={() => setEditedTemplate({ ...editedTemplate, icon: normalizeIconName(iconOption.name) })}
-                    disabled={loading}
-                    className={`p-0.5 rounded-lg border transition-all duration-200 disabled:opacity-50 ${
-                      isSelected
-                        ? 'border-[#4D3EE0] bg-blue-50'
-                        : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div
-                      className="w-6 h-6 rounded flex items-center justify-center mx-auto"
-                      style={{ backgroundColor: iconColor.bg }}
-                    >
-                      <IconComponent className="w-4 h-4" style={{ color: iconColor.iconColor, ...(isCondition ? { transform: 'rotate(90deg)' } : {}) }} />
+            {/* Hide icon section for trigger template */}
+            {!(editedTemplate.name.toLowerCase().includes('trigger') || editedTemplate.icon === 'Zap') && (
+              <>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-slate-700">Icon</label>
+                  <div className="flex items-center">
+                    <div className="flex rounded-xl bg-white border border-slate-200 p-0.5">
+                      {["purple", "orange"].map((color) => {
+                        const colorConfig = ICON_COLORS.find(c => c.value === color);
+                        const isSelected = (editedTemplate.iconColor || 'purple') === color;
+                        return (
+                          <button
+                            key={color}
+                            type="button"
+                            onClick={() => setEditedTemplate({ ...editedTemplate, iconColor: color })}
+                            className={`flex flex-row items-center gap-1 px-2 py-1 rounded-lg focus:outline-none transition-all duration-200 ${
+                              isSelected ? 'bg-white border border-[#4D3EE0] shadow-sm' : 'bg-transparent border border-transparent'
+                            }`}
+                            style={{ minWidth: 40 }}
+                            aria-label={colorConfig?.name}
+                          >
+                            <span
+                              className="w-2 h-2 rounded-full"
+                              style={{ backgroundColor: colorConfig?.iconColor }}
+                            />
+                            <span
+                              className="text-[10px] font-medium text-slate-600"
+                            >
+                              {colorConfig?.name}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
-                  </button>
-                );
-              })}
-            </div>
-            {showSvgInput && (
-              <div className="w-full mt-2 space-y-2">
-                <textarea
-                  value={svgDraft}
-                  onChange={e => setSvgDraft(e.target.value)}
-                  rows={4}
-                  placeholder="Paste SVG markup here"
-                  className="w-full px-2 py-1 border text-xs font-mono border-slate-300 rounded"
-                />
-                {svgDraft.trim() !== '' && (
-                  <div className="flex items-center space-x-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditedTemplate({ ...editedTemplate, icon: 'Custom', customIconSvg: svgDraft });
-                        setShowSvgInput(false);
-                        setSvgDraft('');
-                      }}
-                      className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
-                    >
-                      Save SVG
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setShowSvgInput(false); setSvgDraft(''); }}
-                      className="px-3 py-1 border text-xs rounded hover:bg-slate-100"
-                    >
-                      Cancel
-                    </button>
-                    {/* preview */}
-                    <span
-                      className="w-6 h-6 inline-flex border border-slate-200 rounded"
-                      dangerouslySetInnerHTML={{ __html: svgDraft }}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-1 mb-4">
+                  {AVAILABLE_ICONS.map((iconOption) => {
+                    const IconComponent = getIconComponent(iconOption.name, editedTemplate.customIconSvg);
+                    const isSelected = editedTemplate.icon === iconOption.name;
+                    const iconColor = ICON_COLORS.find(c => c.value === (editedTemplate.iconColor || 'purple')) || ICON_COLORS[0];
+                    const isCondition = iconOption.name === 'Split';
+                    return (
+                      <button
+                        key={iconOption.name}
+                        type="button"
+                        onClick={() => setEditedTemplate({ ...editedTemplate, icon: normalizeIconName(iconOption.name) })}
+                        disabled={loading}
+                        className={`p-0.5 rounded-lg border transition-all duration-200 disabled:opacity-50 ${
+                          isSelected
+                            ? 'border-[#4D3EE0] bg-blue-50'
+                            : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div
+                          className="w-6 h-6 rounded flex items-center justify-center mx-auto"
+                          style={{ backgroundColor: iconColor.bg }}
+                        >
+                          <IconComponent className="w-4 h-4" style={{ color: iconColor.iconColor, ...(isCondition ? { transform: 'rotate(90deg)' } : {}) }} />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                {showSvgInput && (
+                  <div className="w-full mt-2 space-y-2">
+                    <textarea
+                      value={svgDraft}
+                      onChange={e => setSvgDraft(e.target.value)}
+                      rows={4}
+                      placeholder="Paste SVG markup here"
+                      className="w-full px-2 py-1 border text-xs font-mono border-slate-300 rounded"
                     />
+                    {svgDraft.trim() !== '' && (
+                      <div className="flex items-center space-x-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditedTemplate({ ...editedTemplate, icon: 'Custom', customIconSvg: svgDraft });
+                            setShowSvgInput(false);
+                            setSvgDraft('');
+                          }}
+                          className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
+                        >
+                          Save SVG
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setShowSvgInput(false); setSvgDraft(''); }}
+                          className="px-3 py-1 border text-xs rounded hover:bg-slate-100"
+                        >
+                          Cancel
+                        </button>
+                        {/* preview */}
+                        <span
+                          className="w-6 h-6 inline-flex border border-slate-200 rounded"
+                          dangerouslySetInnerHTML={{ __html: svgDraft }}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
+              </>
             )}
           </div>
 
@@ -1104,18 +1114,18 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
     const current = element.propertyOptions || [];
     onUpdate({ propertyOptions: [...current, { label: '', value: '', values: ['', ''] }] });
   };
-  const handleUpdatePropertyOption = (idx: number, updates: Partial<{ label: string; values: string[] }>) => {
+  const handleUpdatePropertyOption = (idx: number, updates: Partial<{ label: string; value: string; values: string[] }>) => {
     const current = element.propertyOptions || [];
     let updated = current.map((opt, i) => {
       if (i !== idx) return opt;
       let newLabel = updates.label !== undefined ? updates.label : opt.label;
-      let newValue = opt.value;
-      if (updates.label !== undefined) {
-        // Generate unique value from label
+      let newValue = updates.value !== undefined ? updates.value : opt.value;
+      if (updates.label !== undefined && updates.value === undefined) {
+        // Generate unique value from label if value not explicitly set
         const others = current.filter((_, j) => j !== idx).map(o => o.value);
         newValue = generateUniqueValue(newLabel, others);
       }
-      return { ...opt, ...updates, value: newValue };
+      return { ...opt, ...updates, label: newLabel, value: newValue };
     });
     onUpdate({ propertyOptions: updated });
   };
@@ -2075,6 +2085,122 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
             disabled={disabled}
           >+ Add Operator Option</button>
         </div>
+      )}
+      {/* Trigger Conditions Module: Attribute and Operator Options */}
+      {element.type === 'trigger-conditions-module' && (
+        <>
+          <div className="mt-4 mb-2 font-semibold text-xs text-slate-700">Attribute options</div>
+          <div className="space-y-2 mb-2">
+            {(element.propertyOptions || []).map((opt, idx) => (
+              <div key={idx} className="relative flex flex-col gap-1">
+                <div className="text-xs font-medium text-slate-600">Attribute</div>
+                <div className="flex items-start gap-2">
+                  <div className="relative w-full">
+                    <input
+                      type="text"
+                      className="px-3 py-2 border border-[#8C95A8] rounded-lg text-xs w-full pr-8"
+                      placeholder="Label"
+                      value={opt.label}
+                      onChange={e => {
+                        // Generate value from label (spaces to underscores, unique)
+                        const label = e.target.value;
+                        const baseValue = label.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+                        const others = (element.propertyOptions || []).filter((_, j) => j !== idx).map(o => o.value);
+                        let uniqueValue = baseValue;
+                        let i = 1;
+                        while (others.includes(uniqueValue)) {
+                          uniqueValue = baseValue + '_' + i;
+                          i++;
+                        }
+                        handleUpdatePropertyOption(idx, { label, value: uniqueValue });
+                      }}
+                      disabled={disabled}
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 p-1"
+                      onClick={() => handleRemovePropertyOption(idx)}
+                      disabled={disabled}
+                      aria-label="Remove property option"
+                      style={{ lineHeight: 0 }}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                {/* Values for this attribute, underneath the label */}
+                <div className="flex flex-col gap-1">
+                  <div className="text-xs font-medium text-slate-600">Values</div>
+                  {(opt.values || []).map((val, vIdx) => (
+                    <div key={vIdx} className="relative flex items-start gap-1 w-full">
+                      <input
+                        type="text"
+                        className="px-2 py-1 border border-[#8C95A8] rounded-lg text-xs w-full pr-8"
+                        placeholder={`Value ${vIdx + 1}`}
+                        value={val}
+                        onChange={e => handleUpdatePropertyOptionValue(idx, vIdx, e.target.value)}
+                        disabled={disabled}
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 p-1"
+                        onClick={() => handleRemovePropertyOptionValue(idx, vIdx)}
+                        disabled={disabled}
+                        aria-label="Remove value"
+                        style={{ lineHeight: 0 }}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="self-start text-xs text-[#2927B2] font-medium hover:text-[#1C1876]"
+                    onClick={() => handleAddPropertyOptionValue(idx)}
+                    disabled={disabled}
+                  >+ Add Value</button>
+                </div>
+              </div>
+            ))}
+            <button
+              type="button"
+              className="text-xs text-[#2927B2] font-medium hover:text-[#1C1876]"
+              onClick={handleAddPropertyOption}
+              disabled={disabled}
+            >+ Add Attribute Option</button>
+          </div>
+
+          <div className="mt-4 mb-2 font-semibold text-xs text-slate-700">Operator options</div>
+          <div className="space-y-2 mb-2">
+            {(element.operatorOptions || []).map((opt, idx) => (
+              <div key={idx} className="relative flex items-center">
+                <input
+                  type="text"
+                  className="px-3 py-2 border border-[#8C95A8] rounded-lg text-xs w-full pr-8"
+                  placeholder="Label"
+                  value={opt.label}
+                  onChange={e => handleUpdateOperatorOption(idx, { label: e.target.value })}
+                  disabled={disabled}
+                />
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 p-1"
+                  onClick={() => handleRemoveOperatorOption(idx)}
+                  disabled={disabled}
+                  aria-label="Remove operator option"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              className="text-xs text-[#2927B2] font-medium hover:text-[#1C1876]"
+              onClick={handleAddOperatorOption}
+              disabled={disabled}
+            >+ Add Operator Option</button>
+          </div>
+        </>
       )}
     </div>
   );

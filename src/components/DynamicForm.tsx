@@ -665,10 +665,10 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
           return (
             <div key={element.id} className={indentClass + ' ' + halfSizeClass}>
               {element.type === 'section-divider' && (
-                element.text && element.text.trim() !== '' ? (
+                ((element.label || element.text) && (element.label || element.text).trim() !== '') ? (
                   <div className="flex items-center space-x-2 my-6">
                     <div className="flex-1 h-px bg-slate-300"></div>
-                    <span className="text-xs font-medium text-[#637085] px-2 uppercase tracking-wide">{element.text}</span>
+                    <span className="text-xs font-medium text-[#637085] px-2 uppercase tracking-wide">{element.label || element.text}</span>
                     <div className="flex-1 h-px bg-slate-300"></div>
                   </div>
                 ) : (
