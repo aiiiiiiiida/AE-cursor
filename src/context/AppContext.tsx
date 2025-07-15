@@ -373,7 +373,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const updateWorkflow = async (workflow: Workflow) => {
     try {
-      dispatch({ type: 'SET_LOADING', payload: true });
       dispatch({ type: 'SET_ERROR', payload: null });
       // Log the workflow being sent to the backend for debugging
       console.log('updateWorkflow: sending to backend:', JSON.stringify(workflow, null, 2));
@@ -394,12 +393,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (error) throw error;
 
       dispatch({ type: 'UPDATE_WORKFLOW', payload: workflow });
-      dispatch({ type: 'SET_LOADING', payload: false });
       
     } catch (error) {
       console.error('Error updating workflow:', error);
       dispatch({ type: 'SET_ERROR', payload: `Failed to update workflow: ${(error as any).message}` });
-      dispatch({ type: 'SET_LOADING', payload: false });
       throw error;
     }
   };

@@ -193,8 +193,9 @@ export function WorkflowBuilder() {
   // Center canvas when workflow loads or side panel opens/closes
   useEffect(() => {
     centerCanvas();
+    // Only center when switching workflows, not on every workflow object or node change
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workflow?.id, selectedNode]);
+  }, [workflowId]);
 
   // Find the trigger template
   const triggerTemplate = state.activityTemplates.find(template => 
