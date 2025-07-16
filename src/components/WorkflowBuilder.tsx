@@ -701,7 +701,7 @@ export function WorkflowBuilder() {
     const condId = condEl.id;
     const condData = node.metadata?.[condId];
     const branches = condData?.branches || [];
-    if (!Array.isArray(branches) || branches.length === 0) return 'No branches defined';
+    if (!Array.isArray(branches) || branches.length === 0) return '';
     return branches.map((branch: any) => {
       const branchName = branch.name || 'Branch';
       const groups = branch.groups || [];

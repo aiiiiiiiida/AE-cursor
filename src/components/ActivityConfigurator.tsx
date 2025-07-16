@@ -398,7 +398,7 @@ export function ActivityConfigurator() {
           >
             <div
               className="bg-white rounded-2xl shadow-xl w-full max-w-md p-0 flex flex-col"
-              style={{ minWidth: 480 }}
+              style={{ minWidth: 520 }}
               onClick={e => e.stopPropagation()}
             >
               {/* Header */}
