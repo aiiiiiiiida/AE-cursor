@@ -7,6 +7,7 @@ import { DynamicForm } from './DynamicForm';
 import { ChevronUp, ChevronDown, X, Plus, Star, Sparkle, UserRoundPlus, ArrowDown10, MousePointer, Text, Calendar as LucideCalendar } from 'lucide-react';
 import ScreeningQuestionsModule from './ScreeningQuestionsModule';
 import TriggerConditionsModule from './TriggerConditionsModule';
+import ReactDOM from 'react-dom';
 
 const AVAILABLE_ICONS = [
   
@@ -56,6 +57,7 @@ export function ActivityConfigurator() {
   const [triggerCreated, setTriggerCreated] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [templateToDelete, setTemplateToDelete] = useState<ActivityTemplate | null>(null);
+  const [showCreateActivityModal, setShowCreateActivityModal] = useState(false);
 
   // Ensure only one trigger template exists at all times
   useEffect(() => {
@@ -71,7 +73,7 @@ export function ActivityConfigurator() {
         name: 'Trigger',
         icon: 'Zap',
         iconColor: 'teal',
-        description: 'Workflow starts here',
+        description: '#{Locale} #{Site type}',
         category: 'Workflow',
         sidePanelDescription: 'Configure when this workflow should start',
         sidePanelElements: [
@@ -195,18 +197,21 @@ export function ActivityConfigurator() {
           </div>
         </div>
         <button
-          onClick={() => setEditingTemplate({
-            id: `tmp-${Date.now()}`,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            name: '',
-            category: 'Workflow',
-            sidePanelDescription: '',
-            description: '',
-            icon: 'Settings',
-            iconColor: 'purple',
-            sidePanelElements: [],
-          })}
+          onClick={() => {
+            setEditingTemplate({
+              id: `tmp-${Date.now()}`,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              name: '',
+              category: 'Workflow',
+              sidePanelDescription: '',
+              description: '',
+              icon: 'Settings',
+              iconColor: 'purple',
+              sidePanelElements: [],
+            });
+            setTimeout(() => setShowCreateActivityModal(true), 1000);
+          }}
           disabled={state.loading}
           className="bg-[#4D3EE0] text-sm text-white px-4 py-2 rounded-xl font-normal hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
@@ -306,58 +311,154 @@ export function ActivityConfigurator() {
       </div>
 
       {/* Delete Confirmation Modal */}
-      {templateToDelete && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30"
-          onClick={() => setTemplateToDelete(null)}
-        >
+      {templateToDelete &&
+        ReactDOM.createPortal(
           <div
-            className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-0 flex flex-col"
-            style={{ minWidth: 380 }}
-            onClick={e => e.stopPropagation()}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              width: '100vw',
+              height: '100vh',
+              zIndex: 50,
+              background: 'rgba(0,0,0,0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            onClick={() => setTemplateToDelete(null)}
           >
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 pt-5 pb-4">
-              <h2 className="text-lg font-semibold text-[#3A3F4B]">Delete activity template</h2>
-              <button
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-full focus:outline-none"
-                onClick={() => setTemplateToDelete(null)}
-                aria-label="Close"
-              >
-                <Lucide.X className="w-5 h-5" />
-              </button>
+            <div
+              className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-0 flex flex-col"
+              style={{ minWidth: 380 }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 pt-5 pb-4">
+                <h2 className="text-lg font-semibold text-[#3A3F4B]">Delete activity template</h2>
+                <button
+                  className="text-slate-400 hover:text-slate-600 p-1 rounded-full focus:outline-none"
+                  onClick={() => setTemplateToDelete(null)}
+                  aria-label="Close"
+                >
+                  <Lucide.X className="w-5 h-5" />
+                </button>
+              </div>
+              {/* Divider */}
+              <div className="border-t border-slate-200 w-full" />
+              {/* Description */}
+              <div className="px-6 py-8 text-[#3A3F4B] text-md font-normal">
+                Are you sure you want to delete this activity template? The action cannot be reverted.
+              </div>
+              {/* Divider */}
+              <div className="border-t border-slate-200 w-full" />
+              {/* Buttons */}
+              <div className="flex justify-end space-x-4 px-6 py-4">
+                <button
+                  className="h-10 px-4 rounded-xl border border-[#8C95A8] text-[#2927B2] text-sm font-medium bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#4D3EE0]"
+                  style={{ fontSize: 14 }}
+                  onClick={() => setTemplateToDelete(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="h-10 px-4 rounded-xl bg-[#C40F24] text-white text-sm font-medium hover:bg-[#B71C1C] focus:outline-none focus:ring-2 focus:ring-[#D32F2F]"
+                  style={{ fontSize: 14 }}
+                  onClick={async () => {
+                    await handleDeleteTemplate(templateToDelete.id);
+                    setTemplateToDelete(null);
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
             </div>
-            {/* Divider */}
-            <div className="border-t border-slate-200 w-full" />
-            {/* Description */}
-            <div className="px-6 py-8 text-[#3A3F4B] text-md font-normal">
-              Are you sure you want to delete this activity template? The action cannot be reverted.
+          </div>,
+          document.body
+        )
+      }
+
+      {/* Create Activity Tutorial Modal */}
+      {showCreateActivityModal &&
+        ReactDOM.createPortal(
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              width: '100vw',
+              height: '100vh',
+              zIndex: 50,
+              background: 'rgba(0,0,0,0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            onClick={() => setShowCreateActivityModal(false)}
+          >
+            <div
+              className="bg-white rounded-2xl shadow-xl w-full max-w-md p-0 flex flex-col"
+              style={{ minWidth: 480 }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 pt-5 pb-4">
+                <h2 className="text-lg font-semibold text-[#3A3F4B]">Use new activities in existing workflows</h2>
+                <button
+                  className="text-slate-400 hover:text-slate-600 p-1 rounded-full focus:outline-none"
+                  onClick={() => setShowCreateActivityModal(false)}
+                  aria-label="Close"
+                >
+                  <Lucide.X className="w-5 h-5" />
+                </button>
+              </div>
+              {/* Divider */}
+              <div className="border-t border-slate-200 w-full" />
+              {/* GIF and Description */}
+              <div className="px-6 pt-4 flex flex-col">
+              <div className="text-[#3A3F4B] text-sm font-normal mb-4">
+                  To add newly created activities to your existing workflows, enable them from the Avalable Activities list at the workflow level.
+                </div>
+                <img
+                  src="/tutorial.gif"
+                  alt="Tutorial GIF"
+                  className="w-full h-auto rounded-lg mb-4 border border-slate-100 shadow"
+                  style={{  objectFit: 'contain' }}
+                />
+                
+              </div>
+              {/* Divider */}
+              <div className="border-t border-slate-200 w-full" />
+              {/* Buttons */}
+              <div className="flex justify-end space-x-4 px-6 py-3">
+                
+                <button
+                  className="h-10 px-4 rounded-xl bg-[#4D3EE0] text-white text-sm font-medium hover:bg-[#2927B2] focus:outline-none focus:ring-2 focus:ring-[#4D3EE0]"
+                  style={{ fontSize: 14 }}
+                  onClick={() => {
+                    setShowCreateActivityModal(false);
+                    setEditingTemplate({
+                      id: `tmp-${Date.now()}`,
+                      createdAt: new Date(),
+                      updatedAt: new Date(),
+                      name: '',
+                      category: 'Workflow',
+                      sidePanelDescription: '',
+                      description: '',
+                      icon: 'Settings',
+                      iconColor: 'purple',
+                      sidePanelElements: [],
+                    });
+                  }}
+                >
+                  Continue
+                </button>
+              </div>
             </div>
-            {/* Divider */}
-            <div className="border-t border-slate-200 w-full" />
-            {/* Buttons */}
-            <div className="flex justify-end space-x-4 px-6 py-4">
-              <button
-                className="h-10 px-4 rounded-xl border border-[#8C95A8] text-[#2927B2] text-sm font-medium bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#4D3EE0]"
-                style={{ fontSize: 14 }}
-                onClick={() => setTemplateToDelete(null)}
-              >
-                Cancel
-              </button>
-              <button
-                className="h-10 px-4 rounded-xl bg-[#C40F24] text-white text-sm font-medium hover:bg-[#B71C1C] focus:outline-none focus:ring-2 focus:ring-[#D32F2F]"
-                style={{ fontSize: 14 }}
-                onClick={async () => {
-                  await handleDeleteTemplate(templateToDelete.id);
-                  setTemplateToDelete(null);
-                }}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )
+      }
     </div>
   );
 }
@@ -556,6 +657,7 @@ function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePrevi
                 value={editedTemplate.name}
                 onChange={(e) => setEditedTemplate({ ...editedTemplate, name: e.target.value })}
                 disabled={loading}
+                placeholder="Activity name"
                 className="w-full px-3 py-1 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
               />
             </div>

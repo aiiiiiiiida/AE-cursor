@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Copy, Trash2, Edit, Play, Calendar, Activity, MoreHorizontal, MoreVertical, Globe, Settings, AlertTriangle, X, Bot } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Workflow } from '../types';
+import ReactDOM from 'react-dom';
 
 export function WorkflowsTable() {
   const { state, createWorkflow, deleteWorkflow } = useApp();
@@ -296,55 +297,69 @@ export function WorkflowsTable() {
       </div>
 
       {/* Delete Confirmation Modal */}
-      {workflowToDelete && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30"
-          onClick={() => setWorkflowToDelete(null)}
-        >
+      {workflowToDelete &&
+        ReactDOM.createPortal(
           <div
-            className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-0 flex flex-col"
-            style={{ minWidth: 380 }}
-            onClick={e => e.stopPropagation()}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              width: '100vw',
+              height: '100vh',
+              zIndex: 50,
+              background: 'rgba(0,0,0,0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            onClick={() => setWorkflowToDelete(null)}
           >
-            {/* Header */}
-            <div className="flex items-center justify-between px-6 pt-5 pb-4">
-              <h2 className="text-lg font-semibold text-[#3A3F4B]">Delete workflow</h2>
-              <button
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-full focus:outline-none"
-                onClick={() => setWorkflowToDelete(null)}
-                aria-label="Close"
-              >
-                <X className="w-5 h-5" />
-              </button>
+            <div
+              className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-0 flex flex-col"
+              style={{ minWidth: 380 }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 pt-5 pb-4">
+                <h2 className="text-lg font-semibold text-[#3A3F4B]">Delete workflow</h2>
+                <button
+                  className="text-slate-400 hover:text-slate-600 p-1 rounded-full focus:outline-none"
+                  onClick={() => setWorkflowToDelete(null)}
+                  aria-label="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              {/* Divider */}
+              <div className="border-t border-slate-200 w-full" />
+              {/* Description */}
+              <div className="px-6 py-8 text-[#3A3F4B] text-md font-normal">
+                Are you sure you want to delete this workflow? The action can not be reverted.
+              </div>
+              {/* Divider */}
+              <div className="border-t border-slate-200 w-full" />
+              {/* Buttons */}
+              <div className="flex justify-end space-x-4 px-6 py-4">
+                <button
+                  className="h-10 px-4 rounded-xl border border-[#8C95A8] text-[#2927B2] text-sm font-medium bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#4D3EE0]"
+                  style={{ fontSize: 14 }}
+                  onClick={() => setWorkflowToDelete(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="h-10 px-4 rounded-xl bg-[#C40F24] text-white text-sm font-medium hover:bg-[#B71C1C] focus:outline-none focus:ring-2 focus:ring-[#D32F2F]"
+                  style={{ fontSize: 14 }}
+                  onClick={handleDeleteWorkflow}
+                >
+                  Delete workflow
+                </button>
+              </div>
             </div>
-            {/* Divider */}
-            <div className="border-t border-slate-200 w-full" />
-            {/* Description */}
-            <div className="px-6 py-8 text-[#3A3F4B] text-md font-normal">
-              Are you sure you want to delete this workflow? The action can not be reverted.
-            </div>
-            {/* Divider */}
-            <div className="border-t border-slate-200 w-full" />
-            {/* Buttons */}
-            <div className="flex justify-end space-x-4 px-6 py-4">
-              <button
-                className="h-10 px-4 rounded-xl border border-[#8C95A8] text-[#2927B2] text-sm font-medium bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#4D3EE0]"
-                style={{ fontSize: 14 }}
-                onClick={() => setWorkflowToDelete(null)}
-              >
-                Cancel
-              </button>
-              <button
-                className="h-10 px-4 rounded-xl bg-[#C40F24] text-white text-sm font-medium hover:bg-[#B71C1C] focus:outline-none focus:ring-2 focus:ring-[#D32F2F]"
-                style={{ fontSize: 14 }}
-                onClick={handleDeleteWorkflow}
-              >
-                Delete workflow
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )
+      }
     </div>
   );
 }

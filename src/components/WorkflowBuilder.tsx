@@ -676,7 +676,19 @@ export function WorkflowBuilder() {
     { label: 'contains', value: 'contains' },
   ];
   function getPropertyLabel(value: string) {
-    return PROPERTY_OPTIONS.find(p => p.value === value)?.label || value;
+    // Try direct match
+    let found = PROPERTY_OPTIONS.find(p => p.value === value);
+    if (found) return found.label;
+    // Try camelCase to snake_case
+    const snake = value.replace(/([A-Z])/g, '_$1').toLowerCase();
+    found = PROPERTY_OPTIONS.find(p => p.value.toLowerCase() === snake);
+    if (found) return found.label;
+    // Try snake_case to camelCase
+    const camel = value.replace(/_([a-z])/g, g => g[1].toUpperCase());
+    found = PROPERTY_OPTIONS.find(p => p.value === camel);
+    if (found) return found.label;
+    // Fallback: prettify
+    return value.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   }
   function getOperatorLabel(value: string) {
     return OPERATOR_OPTIONS.find(o => o.value === value)?.label || value;
@@ -839,7 +851,12 @@ export function WorkflowBuilder() {
                           <h3 className="font-medium text-[#353B46] text-[14px] mb-0">{node.userAssignedName || template.name}</h3>
                         </div>
                         {displayDescription && (
-                          <p className="text-[10px] text-[#637085] leading-relaxed mt-2 whitespace-pre-line">{displayDescription}</p>
+                          <>
+                            <p className="text-[10px] text-[#637085] leading-relaxed mt-2 whitespace-pre-line">{displayDescription}</p>
+                            {node.mapDescription && (
+                              <p className="text-[10px] text-[#637085] leading-relaxed mt-1 whitespace-pre-line font-semibold">{processMapDescription(node.mapDescription, node)}</p>
+                            )}
+                          </>
                         )}
                       </div>
                       {/* Vertical line directly after the card, with no margin below */}
@@ -960,8 +977,17 @@ export function WorkflowBuilder() {
                                         </div>
                                         <h3 className="font-medium text-[#353B46] text-[14px] mb-0">{node.userAssignedName || template.name}</h3>
                                       </div>
-                                      {displayDescription && (
-                                        <p className="text-[10px] text-[#637085] leading-relaxed mt-2">{displayDescription}</p>
+                                      {isCondition ? (
+                                        <>
+                                          <p className="text-[10px] text-[#637085] leading-relaxed mt-2 whitespace-pre-line">{getConditionBranchSummary(node)}</p>
+                                          {node.mapDescription && (
+                                            <p className="text-[10px] text-[#637085] leading-relaxed mt-1 whitespace-pre-line font-semibold">{processMapDescription(node.mapDescription, node)}</p>
+                                          )}
+                                        </>
+                                      ) : (
+                                        displayDescription && (
+                                          <p className="text-[10px] text-[#637085] leading-relaxed mt-2 whitespace-pre-line">{displayDescription}</p>
+                                        )
                                       )}
                                     </div>
                                     {/* Vertical line below card */}
@@ -1689,7 +1715,7 @@ export function WorkflowBuilder() {
             {/* Activities List - grouped by category, show category label, no description */}
             <div className="px-6 py-6 max-h-96 overflow-y-auto">
               <div className="text-sm text-[#3A3F4B] mb-4">
-                Select the activities that show up when you add new activities to the workflow.
+                Select the activities that show up when you add new activities to this workflow.
               </div>
               {(() => {
                 const activities = state.activityTemplates.filter(a => !(a.name.toLowerCase().includes('trigger') || a.icon === 'Zap'));
@@ -1738,13 +1764,13 @@ export function WorkflowBuilder() {
             {/* Divider */}
             <div className="border-t border-slate-200 w-full" />
             {/* Buttons */}
-            <div className="flex justify-end space-x-4 px-6 py-4">
+            <div className="flex justify-end space-x-4 px-6 py-3">
               <button
-                className="h-10 px-4 rounded-xl border border-[#8C95A8] text-[#2927B2] text-sm font-medium bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#4D3EE0]"
+                className="h-10 px-4 rounded-xl bg-[#4D3EE0] text-white text-sm font-medium hover:bg-[#2927B2] focus:outline-none focus:ring-2 focus:ring-[#4D3EE0]"
                 style={{ fontSize: 14 }}
                 onClick={async () => { await saveAvailableActivities(availableActivityIds); setShowAvailableActivitiesModal(false); }}
               >
-                Close
+                Continue
               </button>
             </div>
           </div>
