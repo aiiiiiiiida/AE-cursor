@@ -419,13 +419,16 @@ export function ActivityConfigurator() {
               <div className="text-[#3A3F4B] text-sm font-normal mb-4">
                   To add newly created activities to your existing workflows, enable them from the Avalable Activities list at the workflow level.
                 </div>
+                
                 <img
                   src="/tutorial.gif"
                   alt="Tutorial GIF"
                   className="w-full h-auto rounded-lg mb-4 border border-slate-100 shadow"
                   style={{  objectFit: 'contain' }}
                 />
-                
+                <div className="text-[#3A3F4B] text-sm font-normal mb-4">
+                  New workflows will automatically have all created activities enabled.
+                </div>
               </div>
               {/* Divider */}
               <div className="border-t border-slate-200 w-full" />

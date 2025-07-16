@@ -3187,7 +3187,7 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove, tabSelector, onT
                 <div className="relative flex items-center w-full">
                   <input
                     type="text"
-                    className="px-3 py-2 border rounded text-xs w-full pr-8"
+                    className="px-3 py-2 border border-slate-400  rounded-lg text-xs w-full pr-8"
                     placeholder="Label"
                     value={opt.label}
                     onChange={e => handleUpdatePropertyOption(idx, { label: e.target.value })}
@@ -3209,7 +3209,7 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove, tabSelector, onT
                       <div key={vIdx} className="relative flex items-center w-full">
                         <input
                           type="text"
-                          className="px-3 py-2 border rounded text-xs w-full pr-8"
+                          className="px-3 py-2 border border-slate-400  rounded-lg text-xs w-full pr-8"
                           placeholder={`Value ${vIdx + 1}`}
                           value={val}
                           onChange={e => handleUpdatePropertyOptionValue(idx, vIdx, e.target.value)}
@@ -3250,7 +3250,7 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove, tabSelector, onT
               <div key={idx} className="relative flex items-center w-full">
                 <input
                   type="text"
-                  className="px-3 py-2 border rounded text-xs w-full pr-8"
+                  className="px-3 py-2 border border-slate-400  rounded-lg text-xs w-full pr-8"
                   placeholder="Label"
                   value={opt.label}
                   onChange={e => handleUpdateOperatorOption(idx, { label: e.target.value })}
