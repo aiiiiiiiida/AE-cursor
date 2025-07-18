@@ -91,6 +91,7 @@ export interface Workflow {
   locale?: string;
   creator?: string;
   metadata?: Record<string, any>; // <-- Add this line
+  category?: string; // <-- Add this line
 }
 
 export interface AppState {

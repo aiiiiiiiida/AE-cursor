@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect, Dispatch, SetStateAction, useRef as useReactRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Play, Save, Eye, Settings, Trash2, Search, X, Edit2, Check, ZoomIn, ZoomOut, Maximize2, Minus, Scan, Mail, Globe, Database, FileText, Calendar, Users, Zap, Clock, CheckCircle, AlertCircle, Split, Image, Bot, Hourglass, User, MessageCircle, Tag, ListChecks, Video, ExternalLink, GitBranch, Star, Sparkle, UserRoundPlus, MoreVertical } from 'lucide-react';
+import { ArrowLeft, Plus, Play, Save, Eye, Settings, Trash2, Search, X, Edit2, Check, ZoomIn, ZoomOut, Maximize2, Minus, Scan, Mail, Globe, Database, FileText, Calendar, Users, Zap, Clock, CheckCircle, AlertCircle, Split, Image, Bot, Hourglass, User, MessageCircle, Tag, ListChecks, Video, ExternalLink, GitBranch, Star, Sparkle, UserRoundPlus, MoreVertical, FilePenLine, ListTodo } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { WorkflowNode, ActivityTemplate, UIElement, ConditionalFollowUp } from '../types';
 import { DynamicForm } from './DynamicForm';
@@ -164,6 +164,24 @@ export function WorkflowBuilder() {
   const canvasRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [showWorkflowDetailsModal, setShowWorkflowDetailsModal] = useState(false);
+  const [detailsForm, setDetailsForm] = useState({
+    status: state.workflows.find(w => w.id === workflowId)?.status || 'draft',
+    creator: state.workflows.find(w => w.id === workflowId)?.creator || '',
+    channel: state.workflows.find(w => w.id === workflowId)?.channel || '',
+    version: state.workflows.find(w => w.id === workflowId)?.version || 1,
+    locale: state.workflows.find(w => w.id === workflowId)?.locale || '',
+    category: state.workflows.find(w => w.id === workflowId)?.category || '',
+  });
+  const [categoryOptions, setCategoryOptions] = useState([
+    'High-Volume Hiring',
+    'Job Application',
+    'Job Search',
+    'Onboarding',
+    'Employee Experience',
+  ]);
+  const [categoryInput, setCategoryInput] = useState(detailsForm.category || '');
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
 
   const workflow = state.workflows.find(w => w.id === workflowId);
   const selectedNode = state.selectedNode;
@@ -1313,7 +1331,7 @@ export function WorkflowBuilder() {
             </div>
           </div>
           <div className="flex items-center space-x-3 relative">
-            <button
+            {/* <button
               onClick={() => setPreviewMode(!previewMode)}
               className={`flex items-center space-x-2 px-4 py-2 rounded-xl transition-colors ${
                 previewMode
@@ -1322,7 +1340,7 @@ export function WorkflowBuilder() {
               }`}
             >
               <span>Simulate</span>
-            </button>
+            </button> */}
             <button 
               onClick={handleSaveWorkflow}
               disabled={isSaving}
@@ -1351,10 +1369,24 @@ export function WorkflowBuilder() {
               {showMenu && (
                 <div className="absolute right-0 mt-2 pt-1 pb-1 w-56 bg-white border border-slate-200 rounded-lg shadow-lg z-50">
                   <button
+                    onClick={() => { setShowWorkflowDetailsModal(true); setShowMenu(false); setDetailsForm({
+                      status: workflow.status || 'draft',
+                      creator: workflow.creator || '',
+                      channel: workflow.channel || '',
+                      version: workflow.version || 1,
+                      locale: workflow.locale || '',
+                      category: workflow.category || '',
+                    }); }}
+                    className="w-full text-sm text-left px-4 py-2 text-slate-600 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <FilePenLine className="w-4 h-4 text-xs text-slate-500" />
+                    <span>Workflow details</span>
+                  </button>
+                  <button
                     onClick={() => { setShowAvailableActivitiesModal(true); setShowMenu(false); }}
                     className="w-full text-sm text-left px-4 py-2 text-slate-600 hover:bg-slate-50 flex items-center gap-2"
                   >
-                    <Settings className="w-4 h-4 text-xs text-slate-500" />
+                    <ListTodo className="w-4 h-4 text-xs text-slate-500" />
                     <span>Available activities</span>
                   </button>
                   <button
@@ -1773,6 +1805,217 @@ export function WorkflowBuilder() {
                 Continue
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {showWorkflowDetailsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30" onClick={() => setShowWorkflowDetailsModal(false)}>
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-0 flex flex-col"
+            style={{ minWidth: 380 }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 pt-5 pb-4">
+              <h2 className="text-lg font-semibold text-[#3A3F4B]">Workflow details</h2>
+              <button
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-full focus:outline-none"
+                onClick={() => setShowWorkflowDetailsModal(false)}
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            {/* Divider */}
+            <div className="border-t border-slate-200 w-full" />
+            {/* Form */}
+            <form
+  className="px-6 py-6 flex flex-col gap-4"
+  onSubmit={async e => {
+    e.preventDefault();
+    const updatedWorkflow = {
+      ...workflow,
+      status: detailsForm.status,
+      creator: detailsForm.creator,
+      channel: detailsForm.channel,
+      version: Number(detailsForm.version),
+      locale: detailsForm.locale,
+      category: categoryInput, // always use the input value, even if empty
+    };
+    dispatch({ type: 'UPDATE_WORKFLOW', payload: updatedWorkflow });
+    await updateWorkflow(updatedWorkflow);
+    setShowWorkflowDetailsModal(false);
+  }}
+>
+  {/* Row 1: Status + Channel */}
+  <div className="flex gap-4">
+    <div className="w-1/2">
+      <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+      <div className="relative w-full">
+  <select
+    className="w-full appearance-none px-3 pr-10 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+    value={detailsForm.status}
+    onChange={e => setDetailsForm(f => ({ ...f, status: e.target.value as 'draft' | 'published' }))}
+  >
+    <option value="draft">Draft</option>
+    <option value="published">Published</option>
+  </select>
+  <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+    <svg
+      className="w-4 h-4 text-slate-500"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      viewBox="0 0 24 24"
+    >
+      <path d="M19 9l-7 7-7-7" />
+    </svg>
+  </div>
+</div>
+
+    </div>
+    <div className="w-1/2">
+      <label className="block text-sm font-medium text-slate-700 mb-1">Channel</label>
+      <div className="relative w-full">
+  <select
+    className="w-full appearance-none px-3 pr-10 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+    value={detailsForm.channel}
+    onChange={e => setDetailsForm(f => ({ ...f, channel: e.target.value }))}
+  >
+    <option value="">Select channel</option>
+    <option value="Web">Web</option>
+    <option value="Chatbot">Chatbot</option>
+  </select>
+  <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+    <svg
+      className="w-4 h-4 text-slate-500"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      viewBox="0 0 24 24"
+    >
+      <path d="M19 9l-7 7-7-7" />
+    </svg>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+  {/* Row 2: Version + Locale */}
+  <div className="flex gap-4">
+    <div className="w-1/2">
+      <label className="block text-sm font-medium text-slate-700 mb-1">Version</label>
+      <input
+        className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        type="number"
+        min={1}
+        value={detailsForm.version}
+        onChange={e => setDetailsForm(f => ({ ...f, version: Number(e.target.value) || 1 }))}
+      />
+    </div>
+    <div className="w-1/2">
+      <label className="block text-sm font-medium text-slate-700 mb-1">Locale</label>
+      <input
+        className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        type="text"
+        value={detailsForm.locale}
+        onChange={e => setDetailsForm(f => ({ ...f, locale: e.target.value }))}
+      />
+    </div>
+  </div>
+
+  {/* Row 3: Creator */}
+  <div className="flex gap-4">
+    <div className="w-1/2">
+      <label className="block text-sm font-medium text-slate-700 mb-1">Creator</label>
+      <input
+        className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        type="text"
+        value={detailsForm.creator}
+        onChange={e => setDetailsForm(f => ({ ...f, creator: e.target.value }))}
+      />
+    </div>
+    <div className="w-1/2 relative">
+      <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
+      <input
+        className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        type="text"
+        placeholder="Type or select category"
+        value={categoryInput}
+        onChange={e => setCategoryInput(e.target.value)}
+        onFocus={() => setShowCategoryDropdown(true)}
+        onBlur={() => setTimeout(() => setShowCategoryDropdown(false), 150)}
+        autoComplete="off"
+      />
+      {showCategoryDropdown && (
+        <div className="absolute z-10 bg-white border border-slate-200 rounded-lg shadow w-full mt-1 max-h-40 overflow-y-auto">
+          {(() => {
+            const lowerInput = categoryInput.trim().toLowerCase();
+            const uniqueCategories = Array.from(new Set([...categoryOptions, detailsForm.category].filter(Boolean)));
+            const filtered = uniqueCategories.filter(cat => cat.toLowerCase().includes(lowerInput));
+            const hasExactMatch = uniqueCategories.some(cat => cat.toLowerCase() === lowerInput);
+            const dropdownItems: React.ReactNode[] = [];
+            if (categoryInput && !hasExactMatch) {
+              dropdownItems.push(
+                <button
+                  key="add-new"
+                  type="button"
+                  className="w-full text-left px-3 py-1 hover:bg-[#F4F6FA] text-sm font-medium text-[#2927B2] border-b border-slate-100"
+                  onMouseDown={() => {
+                    setCategoryInput(categoryInput);
+                    setDetailsForm(f => ({ ...f, category: categoryInput }));
+                    setCategoryOptions(prev => [...prev, categoryInput]);
+                    setShowCategoryDropdown(false);
+                  }}
+                >
+                  {`+ Add "${categoryInput}"`}
+                </button>
+              );
+            }
+            dropdownItems.push(
+              ...filtered.map(cat => (
+                <button
+                  key={cat}
+                  type="button"
+                  className={`w-full text-left px-3 py-1 hover:bg-slate-100 text-sm ${cat === categoryInput ? 'bg-[#F4F6FA] font-medium' : ''}`}
+                  onMouseDown={() => {
+                    setCategoryInput(cat);
+                    setDetailsForm(f => ({ ...f, category: cat }));
+                    setShowCategoryDropdown(false);
+                  }}
+                >
+                  {cat}
+                </button>
+              ))
+            );
+            return dropdownItems;
+          })()}
+        </div>
+      )}
+    </div>
+  </div>
+
+  {/* Buttons */}
+  <div className="flex justify-end space-x-4 mt-4">
+    <button
+      type="button"
+      className="h-10 px-4 rounded-xl border border-[#8C95A8] text-[#2927B2] text-sm font-medium bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#4D3EE0]"
+      style={{ fontSize: 14 }}
+      onClick={() => setShowWorkflowDetailsModal(false)}
+    >
+      Cancel
+    </button>
+    <button
+      type="submit"
+      className="h-10 px-4 rounded-xl bg-[#4D3EE0] text-white text-sm font-medium hover:bg-[#2927B2] focus:outline-none focus:ring-2 focus:ring-[#4D3EE0]"
+      style={{ fontSize: 14 }}
+    >
+      Save
+    </button>
+  </div>
+</form>
+
           </div>
         </div>
       )}
@@ -3379,3 +3622,11 @@ function ActivityDropdown({ position, activities, onSelect, onClose, searchTerm,
     </div>
   );
 }
+
+const CATEGORY_OPTIONS = [
+  'High-Volume Hiring',
+  'Job Application',
+  'Job Search',
+  'Onboarding',
+  'Employee Experience',
+];

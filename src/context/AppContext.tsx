@@ -187,7 +187,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         version: workflow.version,
         locale: workflow.locale,
         creator: workflow.creator,
-        metadata: workflow.metadata || {}
+        metadata: workflow.metadata || {},
+        category: workflow.category || undefined,
       }));
 
       dispatch({ 
@@ -339,7 +340,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           version,
           locale,
           creator,
-          metadata: workflowData.metadata || {}
+          metadata: workflowData.metadata || {},
+          category: workflowData.category === '' ? null : workflowData.category
         }])
         .select()
         .single();
@@ -360,7 +362,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         version: data.version,
         locale: data.locale,
         creator: data.creator,
-        metadata: data.metadata || {}
+        metadata: data.metadata || {},
+        category: data.category || undefined,
       };
 
       dispatch({ type: 'CREATE_WORKFLOW', payload: newWorkflow });
@@ -390,6 +393,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
           status: workflow.status,
           trigger_metadata: workflow.triggerMetadata || {},
           metadata: workflow.metadata || {},
+          channel: workflow.channel,
+          version: workflow.version,
+          locale: workflow.locale,
+          creator: workflow.creator,
+          category: workflow.category === '' ? null : workflow.category,
           updated_at: new Date().toISOString()
         })
         .eq('id', workflow.id);
