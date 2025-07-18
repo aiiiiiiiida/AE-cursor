@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Copy, Trash2, Edit, Play, Calendar, Activity, MoreHorizontal, MoreVertical, Globe, Settings, AlertTriangle, X, Bot } from 'lucide-react';
+import { Plus, Search, Copy, Trash2, Edit, Play, Calendar, Activity, MoreHorizontal, MoreVertical, Globe, Settings, AlertTriangle, X, Bot, Workflow as WorkflowIcon } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Workflow } from '../types';
 import ReactDOM from 'react-dom';
@@ -14,10 +14,17 @@ export function WorkflowsTable() {
   const [isCreating, setIsCreating] = useState(false);
   const [workflowToDelete, setWorkflowToDelete] = useState<Workflow | null>(null);
 
-  const filteredWorkflows = state.workflows.filter(workflow =>
-    workflow.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    workflow.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredWorkflows = state.workflows.filter(workflow => {
+    const term = searchTerm.toLowerCase();
+    return (
+      workflow.name.toLowerCase().includes(term) ||
+      (workflow.description?.toLowerCase().includes(term) ?? false) ||
+      (workflow.channel?.toLowerCase().includes(term) ?? false) ||
+      (workflow.status?.toLowerCase().includes(term) ?? false) ||
+      (workflow.locale?.toLowerCase().includes(term) ?? false) ||
+      (workflow.creator?.toLowerCase().includes(term) ?? false)
+    );
+  });
 
   const handleCreateWorkflow = async () => {
     try {
@@ -108,6 +115,16 @@ export function WorkflowsTable() {
           <h1 className="text-xl font-semibold text-[#353B46]">My workflows</h1>
         </div>
         <div className="flex items-center space-x-3">
+          <div className="relative mr-0">
+            <input
+              type="text"
+              placeholder="Search"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="pl-9 pr-3 py-2 rounded-xl border border-[#8C95A8]  text-slate-700 placeholder-slate-500 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#4D3EE0] w-60"
+            />
+            <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
+          </div>
           <button
             onClick={openActivityConfigurator}
             className="flex items-center text-sm space-x-2  font-medium pl-3 pr-4 py-2 rounded-xl border border-[#8C95A8] text-[#2927B2] hover:bg-slate-200 transition-colors"
@@ -167,9 +184,9 @@ export function WorkflowsTable() {
               {filteredWorkflows.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="text-center py-12">
-                    <Activity className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-slate-900 mb-2">No workflows found</h3>
-                    <p className="text-slate-600">Create your first workflow to get started</p>
+                    <WorkflowIcon className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                    <h3 className="text-md font-medium text-slate-700 mb-2">No workflows found</h3>
+                   
                   </td>
                 </tr>
               ) : (
