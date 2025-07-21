@@ -300,40 +300,98 @@ export default function ConditionsModule({ branches: propBranches, onBranchesCha
               {/* Group logic dropdown inside gray card (for additional lines) */}
               <div className="bg-[#F8F9FB] rounded-xl p-4 mb-4">
                 <div className="space-y-3 mb-0">
-                  <div>
-                    <select
-                      className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
-                      value={group.lines[0].property}
-                      onChange={e => handlePropertyChange(branchIdx, groupIdx, e.target.value)}
-                    >
-                      <option value="">Select property</option>
-                      {PROPERTY_OPTIONS.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                  </div>
+                <div className="relative">
+  <select
+    className="w-full appearance-none px-3 pr-8 py-2 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+    value={group.lines[0].property}
+    onChange={e => handlePropertyChange(branchIdx, groupIdx, e.target.value)}
+  >
+    <option value="">Select property</option>
+    {PROPERTY_OPTIONS.map(opt => (
+      <option key={opt.value} value={opt.value}>
+        {opt.label}
+      </option>
+    ))}
+  </select>
+
+  <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+    <svg
+      className="w-4 h-4 text-[#8C95A8]"
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 20 20"
+      fill="currentColor"
+    >
+      <path
+        fillRule="evenodd"
+        d="M5.23 7.21a.75.75 0 011.06.02L10 10.939l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.25 8.27a.75.75 0 01-.02-1.06z"
+        clipRule="evenodd"
+      />
+    </svg>
+  </div>
+</div>
+
                   {group.lines[0].property && (
-                    <div className="flex gap-3">
-                      <select
-                        className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
-                        value={group.lines[0].operator}
-                        onChange={e => handleOperatorChange(branchIdx, groupIdx, 0, e.target.value)}
-                      >
-                        {OPERATOR_OPTIONS.map(opt => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </select>
-                      <select
-                        className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
-                        value={group.lines[0].value}
-                        onChange={e => handleValueChange(branchIdx, groupIdx, 0, e.target.value)}
-                      >
-                        <option value="">Select value</option>
-                        {getPropertyValues(group.lines[0].property || PROPERTY_OPTIONS[0].value).map((val: any) => (
-                          <option key={val} value={val}>{val}</option>
-                        ))}
-                      </select>
-                    </div>
+                   <div className="flex gap-3">
+                   {/* Operator Select */}
+                   <div className="relative w-full">
+                     <select
+                       className="w-full appearance-none px-3 pr-8 py-2 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+                       value={group.lines[0].operator}
+                       onChange={e => handleOperatorChange(branchIdx, groupIdx, 0, e.target.value)}
+                     >
+                       {OPERATOR_OPTIONS.map(opt => (
+                         <option key={opt.value} value={opt.value}>
+                           {opt.label}
+                         </option>
+                       ))}
+                     </select>
+                     <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                       <svg
+                         className="w-4 h-4 text-[#8C95A8]"
+                         xmlns="http://www.w3.org/2000/svg"
+                         viewBox="0 0 20 20"
+                         fill="currentColor"
+                       >
+                         <path
+                           fillRule="evenodd"
+                           d="M5.23 7.21a.75.75 0 011.06.02L10 10.939l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.25 8.27a.75.75 0 01-.02-1.06z"
+                           clipRule="evenodd"
+                         />
+                       </svg>
+                     </div>
+                   </div>
+                 
+                   {/* Value Select */}
+                   <div className="relative w-full">
+                     <select
+                       className="w-full appearance-none px-3 pr-8 py-2 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+                       value={group.lines[0].value}
+                       onChange={e => handleValueChange(branchIdx, groupIdx, 0, e.target.value)}
+                     >
+                       <option value="">Select value</option>
+                       {getPropertyValues(group.lines[0].property || PROPERTY_OPTIONS[0].value).map((val: any) => (
+                         <option key={val} value={val}>
+                           {val}
+                         </option>
+                       ))}
+                     </select>
+                     <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                       <svg
+                         className="w-4 h-4 text-[#8C95A8]"
+                         xmlns="http://www.w3.org/2000/svg"
+                         viewBox="0 0 20 20"
+                         fill="currentColor"
+                       >
+                         <path
+                           fillRule="evenodd"
+                           d="M5.23 7.21a.75.75 0 011.06.02L10 10.939l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.25 8.27a.75.75 0 01-.02-1.06z"
+                           clipRule="evenodd"
+                         />
+                       </svg>
+                     </div>
+                   </div>
+                 </div>
+                 
                   )}
                 </div>
                 {/* Additional lines */}
@@ -353,26 +411,66 @@ export default function ConditionsModule({ branches: propBranches, onBranchesCha
                       <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600 pointer-events-none" />
                     </div>
                     <div className="flex gap-3">
-                      <select
-                        className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
-                        value={line.operator}
-                        onChange={e => handleOperatorChange(branchIdx, groupIdx, idx + 1, e.target.value)}
-                      >
-                        {OPERATOR_OPTIONS.map(opt => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </select>
-                      <select
-                        className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
-                        value={line.value}
-                        onChange={e => handleValueChange(branchIdx, groupIdx, idx + 1, e.target.value)}
-                      >
-                        <option value="">Select value</option>
-                        {getPropertyValues(group.lines[0].property || PROPERTY_OPTIONS[0].value).map((val: any) => (
-                          <option key={val} value={val}>{val}</option>
-                        ))}
-                      </select>
-                    </div>
+  {/* Operator Select */}
+  <div className="relative w-full">
+    <select
+      className="w-full appearance-none px-3 pr-8 py-2 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+      value={line.operator}
+      onChange={e => handleOperatorChange(branchIdx, groupIdx, idx + 1, e.target.value)}
+    >
+      {OPERATOR_OPTIONS.map(opt => (
+        <option key={opt.value} value={opt.value}>
+          {opt.label}
+        </option>
+      ))}
+    </select>
+    <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+      <svg
+        className="w-4 h-4 text-[#8C95A8]"
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 20 20"
+        fill="currentColor"
+      >
+        <path
+          fillRule="evenodd"
+          d="M5.23 7.21a.75.75 0 011.06.02L10 10.939l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.25 8.27a.75.75 0 01-.02-1.06z"
+          clipRule="evenodd"
+        />
+      </svg>
+    </div>
+  </div>
+
+  {/* Value Select */}
+  <div className="relative w-full">
+    <select
+      className="w-full appearance-none px-3 pr-8 py-2 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+      value={line.value}
+      onChange={e => handleValueChange(branchIdx, groupIdx, idx + 1, e.target.value)}
+    >
+      <option value="">Select value</option>
+      {getPropertyValues(group.lines[0].property || PROPERTY_OPTIONS[0].value).map((val: any) => (
+        <option key={val} value={val}>
+          {val}
+        </option>
+      ))}
+    </select>
+    <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+      <svg
+        className="w-4 h-4 text-[#8C95A8]"
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 20 20"
+        fill="currentColor"
+      >
+        <path
+          fillRule="evenodd"
+          d="M5.23 7.21a.75.75 0 011.06.02L10 10.939l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.25 8.27a.75.75 0 01-.02-1.06z"
+          clipRule="evenodd"
+        />
+      </svg>
+    </div>
+  </div>
+</div>
+
                   </div>
                 ))}
                 {/* Add Line button: only show if property is selected */}
@@ -380,7 +478,7 @@ export default function ConditionsModule({ branches: propBranches, onBranchesCha
                   <div className="mt-3">
                     <button
                       type="button"
-                      className="inline-flex items-center text-[#2927B2] text-sm font-medium hover:underline"
+                      className="inline-flex items-center text-[#2927B2] text-sm font-medium hover:text-[#1C1876]"
                       onClick={() => handleAddLine(branchIdx, groupIdx)}
                     >
                       <Plus className="w-4 h-4 mr-2" /> Add Line
@@ -394,7 +492,7 @@ export default function ConditionsModule({ branches: propBranches, onBranchesCha
           <div className="flex flex-col gap-2">
             <button
               type="button"
-              className="inline-flex items-center text-[#2927B2] text-sm font-medium hover:underline"
+              className="inline-flex items-center text-[#2927B2] text-sm font-medium hover:text-[#1C1876]"
               onClick={() => handleAddCondition(branchIdx)}
             >
               <Plus className="w-4 h-4 mr-2 transform rotate-90" /> Add Condition
@@ -402,7 +500,7 @@ export default function ConditionsModule({ branches: propBranches, onBranchesCha
             {branchIdx === branches.length - 1 && (
               <button
                 type="button"
-                className="inline-flex items-center text-[#2927B2] text-sm font-medium hover:underline"
+                className="inline-flex items-center text-[#2927B2] text-sm font-medium hover:text-[#1C1876]"
                 onClick={handleAddBranch}
               >
                 <Split className="w-4 h-4 mr-2 transform rotate-90" /> Add Branch

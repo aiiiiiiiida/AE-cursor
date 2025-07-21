@@ -161,30 +161,66 @@ export default function TriggerConditionsModule({
               </button>
             )}
             <div className="flex gap-3 mb-3">
-              <div className="w-1/2">
+            <div className="w-1/2 relative">
+  <select
+    className="w-full appearance-none px-3 pr-8 py-2 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+    value={cond.attribute}
+    onChange={e => handleAttributeChange(idx, e.target.value)}
+  >
+    <option value="">Attribute</option>
+    {ATTRS.map((opt: { label: string; value: string }) => (
+      <option key={opt.value} value={opt.value}>
+        {opt.label}
+      </option>
+    ))}
+  </select>
+
+  <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+    <svg
+      className="w-4 h-4 text-[#8C95A8]"
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 20 20"
+      fill="currentColor"
+    >
+      <path
+        fillRule="evenodd"
+        d="M5.23 7.21a.75.75 0 011.06.02L10 10.939l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.25 8.27a.75.75 0 01-.02-1.06z"
+        clipRule="evenodd"
+      />
+    </svg>
+  </div>
+</div>
+
+              {cond.attribute && (
+                <div className="w-1/2 relative">
                 <select
-                  className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
-                  value={cond.attribute}
-                  onChange={e => handleAttributeChange(idx, e.target.value)}
+                  className="w-full appearance-none px-3 pr-8 py-2 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+                  value={cond.operator}
+                  onChange={e => handleOperatorChange(idx, e.target.value)}
                 >
-                  <option value="">Attribute</option>
-                  {ATTRS.map((opt: { label: string; value: string }) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  {OPS.map(opt => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
                   ))}
                 </select>
-              </div>
-              {cond.attribute && (
-                <div className="w-1/2">
-                  <select
-                    className="w-full px-3 py-2 border border-[#8C95A8] rounded-[10px] text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
-                    value={cond.operator}
-                    onChange={e => handleOperatorChange(idx, e.target.value)}
+              
+                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                  <svg
+                    className="w-4 h-4 text-[#8C95A8]"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
                   >
-                    {OPS.map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
+                    <path
+                      fillRule="evenodd"
+                      d="M5.23 7.21a.75.75 0 011.06.02L10 10.939l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.25 8.27a.75.75 0 01-.02-1.06z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
                 </div>
+              </div>
+              
               )}
             </div>
 
