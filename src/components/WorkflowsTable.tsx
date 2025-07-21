@@ -167,7 +167,7 @@ export function WorkflowsTable() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-xl font-semibold text-[#353B46]">My workflows</h1>
+          <h1 className="text-xl font-semibold text-[#353B46]">Workflows</h1>
         </div>
         <div className="flex items-center space-x-3">
           <div className="relative mr-0">
@@ -211,34 +211,41 @@ export function WorkflowsTable() {
       {/* Add the category tabs above the table: */}
       {/* Replace the full-width flex container for the tabs with a left-aligned, inline-flex container that hugs the tabs: */}
       <div>
-        <div className="inline-flex items-center border border-[#D1D5DC] rounded-t-2xl bg-[#F8F9FB] overflow-hidden" style={{ borderBottom: 'none' }}>
-          {categoryTabs.map((tab, idx) => (
-            <button
-              key={tab.key}
-              onClick={() => setSelectedCategory(tab.key)}
-              className={`flex items-center px-4 py-2.5 text-sm font-normal transition-colors whitespace-nowrap border-r border-[#D1D5DC] ${
-                idx === categoryTabs.length - 1 ? 'last:border-r-0' : ''
-              } ${
-                selectedCategory === tab.key
-                  ? 'bg-white text-[#4B5563] font-semibold shadow-sm'
-                  : 'bg-[#F8F9FB] text-[#6B7280] hover:bg-white'
-              }`}
-              style={{
-                borderTopLeftRadius: tab.key === 'all' ? 16 : 0,
-                borderTopRightRadius: idx === categoryTabs.length - 1 ? 16 : 0
-              }}
-            >
-              <span>{tab.label}</span>
-              <span className="ml-1 text-sm font-normal">{tab.count}</span>
-            </button>
-          ))}
-        </div>
-        <div className="bg-white rounded-xl border border-[#D1D5DC] shadow-sm rounded-tl-none">
+      <div className="flex gap-2 p-4 border-t border-l border-r  border-[#D1D5DC] rounded-t-lg w-full">
+  {categoryTabs.map((tab) => {
+    const isSelected = selectedCategory === tab.key;
+    return (
+      <button
+        key={tab.key}
+        onClick={() => setSelectedCategory(tab.key)}
+        className={`
+          flex items-center gap-2 px-2.5 py-1.5 rounded-[8px] border text-sm font-normal transition 
+          ${isSelected 
+            ? 'bg-[#EAE8FB] text-[#353B46] border-transparent  font-[500]' 
+            : 'bg-white text-[#637085] border-[#D1D5DC] hover:bg-[#F8F9FB]'
+          }
+        `}
+      >
+        <span>{tab.label}</span>
+        <span
+    className={`
+      ${isSelected ? 'bg-white text-[#353B46]' : 'bg-[#F1F3F7] text-[#637085]'}
+      text-xs font-medium px-2 py-0.5 rounded-[6px]
+    `}
+  >
+    {tab.count}
+  </span>
+      </button>
+    );
+  })}
+</div>
+
+        <div className="bg-white rounded-xl border border-[#D1D5DC] shadow-sm rounded-t-none">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-[#D1D5DC]">
-                <th
+                {/* <th
   className="text-left py-2 px-6 w-12 bg-[#F8F9FB]"
   style={{ borderTopLeftRadius: '10px' }}
 >
@@ -248,15 +255,15 @@ export function WorkflowsTable() {
                       onChange={toggleSelectAll}
                       className="rounded border-slate-300"
                     />
-                  </th>
-                  <th className="text-left py-2 px-6 text-[13px] font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Name</th>
+                  </th> */}
+                  <th className="text-left py-2 px-5 text-[13px] font-medium text-[#353B46] bg-[#F8F9FB] ">Name</th>
                   <th className="text-left py-2 px-6 text-[13px] font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Status</th>
                   <th className="text-left py-2 px-6 text-[13px] font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Channel</th>
                   <th className="text-left py-2 px-6 text-[13px] font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Version</th>
                   <th className="text-left py-2 px-6 text-[13px] font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Locale</th>
                   <th className="text-left py-2 px-6 text-[13px] font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Modified</th>
                   <th className="text-left py-2 px-6 text-[13px] font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Set Live</th>
-                  <th className="w-12 bg-[#F8F9FB] border-l border-l-[#D1D5DC]" style={{ borderTopRightRadius: '10px' }}></th>
+                  <th className="w-8 bg-[#F8F9FB] border-l border-l-[#D1D5DC]" style={{ borderTopRightRadius: '10px' }}></th>
 
                 </tr>
               </thead>
@@ -276,7 +283,7 @@ export function WorkflowsTable() {
                       className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer"
                       onClick={() => openWorkflowBuilder(workflow)}
                     >
-                      <td className="py-4 px-6">
+                      {/* <td className="py-4 px-6">
                         <input
                           type="checkbox"
                           checked={selectedWorkflows.includes(workflow.id)}
@@ -286,8 +293,8 @@ export function WorkflowsTable() {
                           }}
                           className="rounded border-slate-300"
                         />
-                      </td>
-                      <td className="py-4 px-6">
+                      </td> */}
+                      <td className="py-4 px-5">
                         <div>
                           <div className="font-medium text-sm text-[#464F5E]">{workflow.name}</div>
                           {workflow.description && (
@@ -296,16 +303,21 @@ export function WorkflowsTable() {
                         </div>
                       </td>
                       <td className="py-4 px-6">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${
-                          workflow.status === 'published'
-                            ? 'bg-green-100 text-green-800'
-                            : workflow.status === 'draft'
-                            ? 'bg-gray-100 text-gray-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {workflow.status === 'published' ? 'Live' : workflow.status}
-                        </span>
-                      </td>
+  <span
+    className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${
+      workflow.status === 'published'
+        ? 'bg-[#D8F4F2] text-[#3C6D68]'
+        : 'bg-gray-100 text-gray-800'
+    }`}
+  >
+    {workflow.status === 'published'
+      ? 'Live'
+      : workflow.status === 'draft'
+      ? 'Draft'
+      : workflow.status}
+  </span>
+</td>
+
                       <td className="py-4 px-6">
                         <div className="flex items-center space-x-2">
                           {workflow.channel === 'Chatbot' ? (
@@ -334,7 +346,7 @@ export function WorkflowsTable() {
                           <div className="text-xs text-slate-500">by {workflow.creator}</div>
                         </div>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-4 px-4">
                         <div className="relative">
                           <button
                             onClick={(e) => {

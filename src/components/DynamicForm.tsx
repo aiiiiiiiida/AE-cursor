@@ -339,6 +339,8 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
   // Remove the use of allElements = [...filteredElements, ...Object.values(dynamicElements).flat()];
   // Instead, when rendering each element, if it's a button, render dynamicElements[element.id] above it.
 
+  // Use a counter to track the index among only condition nodes
+  let conditionNodeCount = 0;
   return (
     <>
       <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-4">
@@ -378,26 +380,40 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
           );
         }
         if (element.type === 'conditions-module') {
+          // Always get conditionNodeNumber from form state for this node, or from the element if not present
+          const conditionNodeNumber = formValues[element.id]?.conditionNodeNumber || element.conditionNodeNumber || 1;
+          console.log('[DynamicForm] Rendering ConditionsModule:', {
+            element,
+            formValue: formValues[element.id],
+            conditionNodeNumber
+          });
+          // Generate unique branch name for this condition node
+          const generateBranchName = (branchIdx: number) => {
+            return `Branch ${conditionNodeNumber}.${branchIdx + 1}`;
+          };
           // Controlled branches: get from formValues or default
           const branches = formValues[element.id]?.branches || [
-            { name: 'Branch 1', outerLogic: 'or', groups: [
+            { name: generateBranchName(0), outerLogic: 'or', groups: [
               { lines: [{ property: '', operator: 'is', value: '' }], groupLogic: 'or' }
-            ] }
+            ], conditionNodeNumber }
           ];
           const handleBranchesChange = (newBranches: any) => {
             const branchNames = newBranches.map((b: any) => b.name);
             // Detect deleted branches
             const prevBranchNames = (formValues[element.id]?.branches || []).map((b: any) => b.name);
             const deletedBranches = prevBranchNames.filter((name: string) => !branchNames.includes(name));
-            const newElementValue = { ...formValues[element.id], branches: newBranches };
+            // Always preserve conditionNodeNumber in the form state and on every branch
+            const branchesWithNumber = newBranches.map((b: any) => ({ ...b, conditionNodeNumber }));
+            const newElementValue = { ...formValues[element.id], branches: branchesWithNumber, conditionNodeNumber };
             const newValues = { ...formValues, [element.id]: newElementValue, branches: branchNames };
             if (deletedBranches.length > 0) {
               console.log('DynamicForm: Deleting branches', deletedBranches, 'with values', newValues);
-              onChange?.({ ...newValues, __deleteNodesInBranches: deletedBranches });
+              onChange?.(newValues);
+              setFormValues?.(newValues);
             } else {
               onChange?.(newValues);
+              setFormValues?.(newValues);
             }
-            setFormValues(newValues);
           };
           return (
             <div key={element.id} className="md:col-span-2">
@@ -406,6 +422,7 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
                 onBranchesChange={handleBranchesChange}
                 propertyOptions={element.propertyOptions}
                 operatorOptions={element.operatorOptions}
+                conditionNodeNumber={conditionNodeNumber}
               />
             </div>
           );

@@ -1,12 +1,14 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Plus, Split, ChevronDown, Trash2, X } from 'lucide-react';
 
-export default function ConditionsModule({ branches: propBranches, onBranchesChange, propertyOptions, operatorOptions }: {
+export default function ConditionsModule({ branches: propBranches, onBranchesChange, propertyOptions, operatorOptions, conditionNodeNumber }: {
   branches?: any[];
   onBranchesChange?: (branches: any[]) => void;
   propertyOptions?: Array<{ label: string; value: string; values: string[] }>;
   operatorOptions?: Array<{ label: string; value: string }>;
+  conditionNodeNumber?: number;
 } = {}) {
+  console.log('[ConditionsModule] Received props:', { conditionNodeNumber, branches: propBranches });
   const [outerLogic, setOuterLogic] = React.useState<string>('or');
   const [editingBranchIdx, setEditingBranchIdx] = useState<number | null>(null);
   const [editingBranchValue, setEditingBranchValue] = useState<string>('');
@@ -104,15 +106,61 @@ export default function ConditionsModule({ branches: propBranches, onBranchesCha
     );
     updateBranches(newBranches);
   };
+
+  // Always use the conditionNodeNumber prop for branch naming
+  const nodeNumber = typeof conditionNodeNumber === 'number' ? conditionNodeNumber : 1;
+
+  function generateBranchName(branchIdx: number) {
+    return `Branch ${nodeNumber}.${branchIdx + 1}`;
+  }
+
+  // Ensure all branch names use the correct condition node number from the prop
+  React.useEffect(() => {
+    const updated = branches.map((b, idx) => {
+      // Only auto-update if the name matches the pattern 'Branch X.Y'
+      const match = b.name && b.name.match(/^Branch (\d+)\.(\d+)$/);
+      if (match && Number(match[1]) !== nodeNumber) {
+        return { ...b, name: generateBranchName(idx), conditionNodeNumber: nodeNumber };
+      }
+      // Always ensure conditionNodeNumber is present in each branch and matches the prop
+      if (b.conditionNodeNumber !== nodeNumber) {
+        return { ...b, conditionNodeNumber: nodeNumber };
+      }
+      return b;
+    });
+    // Only update if something changed
+    const changed = updated.some((b, i) => b.name !== branches[i].name || b.conditionNodeNumber !== branches[i].conditionNodeNumber);
+    if (changed) updateBranches(updated);
+    // eslint-disable-next-line
+  }, [nodeNumber, branches.length]);
+
+  // When adding a new branch, use the unique name and always set conditionNodeNumber from the prop
   const handleAddBranch = () => {
-    const newBranches = [
-      ...branches,
-      { name: `Branch ${branches.length + 1}`, outerLogic: 'or', groups: [
+    const newBranchIdx = branches.length;
+    const newBranch = {
+      name: generateBranchName(newBranchIdx),
+      outerLogic: 'or',
+      groups: [
         { lines: [{ property: '', operator: 'is', value: '' }], groupLogic: 'or' }
-      ] }
-    ];
-    updateBranches(newBranches);
+      ],
+      conditionNodeNumber: nodeNumber
+    };
+    updateBranches([...branches, newBranch]);
   };
+
+  // When resetting or initializing branches, use the unique naming as well
+  useEffect(() => {
+    if (branches.length === 0) {
+      updateBranches([
+        { name: generateBranchName(0), outerLogic: 'or', groups: [
+          { lines: [{ property: '', operator: 'is', value: '' }], groupLogic: 'or' }
+        ], conditionNodeNumber: nodeNumber }
+      ]);
+    }
+    // Don't automatically rename existing branches - let the parent component handle that
+    // eslint-disable-next-line
+  }, [conditionNodeNumber]);
+
   const getPropertyValues = (property: string) => {
     const prop = PROPERTY_OPTIONS.find(p => p.value === property);
     return prop ? prop.values : [];
