@@ -3398,9 +3398,9 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove, tabSelector, onT
       {element.type === 'events-module' && (
         <div className="col-span-2 mb-3">
           <label className="block text-xs font-medium text-slate-600 mb-1">Events</label>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {(element.events || []).map((event, idx) => (
-              <div key={idx} className="border rounded-lg p-3 bg-slate-50 flex flex-col gap-2 relative">
+              <div key={idx} className="border rounded-lg p-3 bg-slate-50 flex flex-col gap-0 relative">
                 <button
                   type="button"
                   className="absolute top-2 right-2 text-slate-400 hover:text-red-500 p-1"
@@ -3413,44 +3413,56 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove, tabSelector, onT
                 >
                   <X className="w-4 h-4" />
                 </button>
-                <input
-                  type="text"
-                  className="w-full px-2 py-1 border border-[#8C95A8] rounded text-sm mb-1"
-                  placeholder="Event title"
-                  value={event.title}
-                  onChange={e => {
-                    const newEvents = [...(element.events || [])];
-                    newEvents[idx] = { ...event, title: e.target.value };
-                    onUpdate(element.id, { events: newEvents });
-                  }}
-                />
-                <input
-                  type="text"
-                  className="w-full px-2 py-1 border border-[#8C95A8] rounded text-sm mb-1"
-                  placeholder="Event subtitle"
-                  value={event.subtitle}
-                  onChange={e => {
-                    const newEvents = [...(element.events || [])];
-                    newEvents[idx] = { ...event, subtitle: e.target.value };
-                    onUpdate(element.id, { events: newEvents });
-                  }}
-                />
-                <input
-                  type="text"
-                  className="w-full px-2 py-1 border border-[#8C95A8] rounded text-sm"
-                  placeholder="Event tag"
-                  value={event.tag}
-                  onChange={e => {
-                    const newEvents = [...(element.events || [])];
-                    newEvents[idx] = { ...event, tag: e.target.value };
-                    onUpdate(element.id, { events: newEvents });
-                  }}
-                />
+                <div className="mb-2">
+  <label className="block text-xs font-medium text-gray-700 mb-1">Event title</label>
+  <input
+    type="text"
+    className="w-full px-2 py-1 border border-[#8C95A8] rounded-lg text-sm mb-1"
+    placeholder="Event title"
+    value={event.title}
+    onChange={e => {
+      const newEvents = [...(element.events || [])];
+      newEvents[idx] = { ...event, title: e.target.value };
+      onUpdate(element.id, { events: newEvents });
+    }}
+  />
+</div>
+
+<div className="mb-2">
+  <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+  <input
+    type="text"
+    className="w-full px-2 py-1 border border-[#8C95A8] rounded-lg text-sm mb-1"
+    placeholder="Event subtitle"
+    value={event.subtitle}
+    onChange={e => {
+      const newEvents = [...(element.events || [])];
+      newEvents[idx] = { ...event, subtitle: e.target.value };
+      onUpdate(element.id, { events: newEvents });
+    }}
+  />
+</div>
+
+<div className="mb-2">
+  <label className="block text-xs font-medium text-gray-700 mb-1">Tag</label>
+  <input
+    type="text"
+    className="w-full px-2 py-1 border border-[#8C95A8] rounded-lg text-sm"
+    placeholder="Event tag"
+    value={event.tag}
+    onChange={e => {
+      const newEvents = [...(element.events || [])];
+      newEvents[idx] = { ...event, tag: e.target.value };
+      onUpdate(element.id, { events: newEvents });
+    }}
+  />
+</div>
+
               </div>
             ))}
             <button
               type="button"
-              className="mt-2 px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+              className="mt-2 px-3 py-1 bg-[#4D3EE0] text-white rounded-lg text-xs hover:bg-[#2927B2]"
               onClick={() => {
                 const newEvents = [...(element.events || []), { title: '', subtitle: '', tag: '' }];
                 onUpdate(element.id, { events: newEvents });
