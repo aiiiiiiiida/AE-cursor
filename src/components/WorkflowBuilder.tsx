@@ -792,6 +792,29 @@ export function WorkflowBuilder() {
     }).join('\n');
   }
 
+  // Returns the total width required for a branch and its nested branches
+  function getBranchTreeWidth(branch: string): number {
+    const branchNodes = getNodesForBranch(branch);
+    if (branchNodes.length === 0) return 264; // base width for empty branch
+
+    // Find the first condition node in this branch (if any)
+    const conditionNode = branchNodes.find(isConditionNode);
+    if (!conditionNode) return 264; // no further branching, just one column
+
+    // For each sub-branch, recursively calculate width
+    const branches = conditionNode.metadata?.branches || [];
+    if (branches.length === 0) return 264;
+
+    // Add gap between columns
+    const gap = 48;
+    let totalWidth = 0;
+    for (let i = 0; i < branches.length; i++) {
+      totalWidth += getBranchTreeWidth(branches[i]);
+      if (i < branches.length - 1) totalWidth += gap;
+    }
+    return totalWidth;
+  }
+
   // Render a single branch
   const renderBranch = (branch: string, branchIndex: number, parentConditionId?: string, visitedNodeIds: string[] = []) => {
     // Prevent duplicate rendering: if this branch is being rendered as a child of a Condition node, do not render it again at the top level
@@ -837,12 +860,17 @@ export function WorkflowBuilder() {
           // --- NEW: Always render branch columns for every condition node (nested or not) ---
           if (isConditionNode(node)) {
             const branches = node.metadata?.branches || ['Branch 1', 'Branch 2'];
-            const branchCount = branches.length;
-            const columnWidth = 264; // width of activity card
+            // --- DYNAMIC WIDTH CALCULATION ---
             const gap = 48;
+            const branchWidths = branches.map((b: string) => getBranchTreeWidth(b));
+            const branchXs: number[] = [];
+            let x = 0;
+            for (let i = 0; i < branchWidths.length; i++) {
+              branchXs.push(x + branchWidths[i] / 2); // center of the branch column
+              x += branchWidths[i] + gap;
+            }
+            const svgWidth = x - gap; // total width minus last gap
             const svgHeight = 12;
-            const svgWidth = branchCount > 1 ? (branchCount - 1) * (columnWidth + gap) : 0;
-            const branchXs = branches.map((_: any, idx: number) => idx * (columnWidth + gap));
             return (
               <div key={node.id} className="flex flex-col items-center w-full">
                 {/* Condition Node Card */}
@@ -885,12 +913,12 @@ export function WorkflowBuilder() {
                 {/* Vertical line directly after the card, with no margin below */}
                 <div className="w-0.5 h-5 bg-slate-300 m-0 p-0" style={{ margin: 0, padding: 0 }} />
                 {/* SVG for horizontal + rounded lines, horizontal line at the very top */}
-                {branchCount > 1 && (
+                {branches.length > 1 && (
                   <svg width={svgWidth} height={svgHeight} className="block" style={{ marginTop: 0 }}>
                     {/* Horizontal line at the very top */}
-                    <line x1={branchXs[0]} y1={0} x2={branchXs[branchCount - 1]} y2={0} stroke="#CBD5E1" strokeWidth="3" />
+                    <line x1={branchXs[0]} y1={0} x2={branchXs[branchXs.length - 1]} y2={0} stroke="#CBD5E1" strokeWidth="3" />
                     {/* Rounded corners and verticals */}
-                    {branchXs.map((x: any, idx: number) => (
+                    {branchXs.map((x, idx) => (
                       <React.Fragment key={idx}>
                         {/* Rounded corner starting at the top */}
                         <path
@@ -904,12 +932,17 @@ export function WorkflowBuilder() {
                   </svg>
                 )}
                 {/* Branch columns */}
-                <div className="flex flex-row justify-center gap-x-12 mt-0">
+                <div className="flex flex-row justify-center mt-0" style={{ width: svgWidth }}>
                   {branches.map((branchName: any, branchIdx: number) => {
                     // Filter out the current node from the branch nodes to prevent direct recursion
                     const branchNodes = getNodesForBranch(branchName).filter(n => n.id !== node.id);
+                    // Calculate left margin for each branch column
+                    let left = 0;
+                    for (let i = 0; i < branchIdx; i++) {
+                      left += branchWidths[i] + gap;
+                    }
                     return (
-                      <div key={branchName} className="flex flex-col items-center w-[264px]">
+                      <div key={branchName} className="flex flex-col items-center" style={{ width: branchWidths[branchIdx], marginLeft: branchIdx === 0 ? 0 : gap }}>
                         {/* Branch tag */}
                         {editingBranch === branchName ? (
                           <input
