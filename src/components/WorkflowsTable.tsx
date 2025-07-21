@@ -176,7 +176,7 @@ export function WorkflowsTable() {
               placeholder="Search"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="pl-9 pr-3 py-2 rounded-xl border border-[#8C95A8]  text-slate-700 placeholder-slate-500 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#4D3EE0] w-60"
+              className="pl-9 pr-3 py-2 rounded-xl border border-[#8C95A8]  text-slate-700 placeholder-slate-500 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#4D3EE0] w-48"
             />
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
           </div>
