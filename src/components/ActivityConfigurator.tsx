@@ -1751,10 +1751,10 @@ function UIElementEditor({ element, onUpdate, onRemove, onMoveUp, onMoveDown, ca
                     ];
                     onUpdate({ addedElements: newAdded });
                   }}
-                  className="text-xs text-blue-700 hover:underline mt-2"
+                  className="text-xs text-[#2927B2] hover:text-[#1C1876]"
                   disabled={disabled}
                 >
-                  + Add Element
+                  + Add element
                 </button>
               </div>
             </div>
