@@ -432,7 +432,9 @@ export function WorkflowBuilder() {
         activityTemplateId: triggerTemplate.id,
         position: { x: 0, y: 0 },
         userAssignedName: 'Trigger',
-        localSidePanelElements: [...triggerTemplate.sidePanelElements],
+        localSidePanelElements: workflow.triggerMetadata?.localSidePanelElements
+          ? [...workflow.triggerMetadata.localSidePanelElements]
+          : [...(triggerTemplate?.sidePanelElements || [])],
         metadata: workflow.triggerMetadata || {}
       };
       dispatch({ type: 'SELECT_NODE', payload: triggerNode });
@@ -466,27 +468,29 @@ export function WorkflowBuilder() {
   const handleNodeUpdate = async (nodeId: string, updates: Partial<WorkflowNode>) => {
     // Handle trigger updates separately
     if (nodeId === 'trigger') {
+      const updatedTriggerMetadata = {
+        ...(workflow.triggerMetadata || {}),
+        ...(updates.metadata ? updates.metadata : {}),
+        ...(updates.localSidePanelElements ? { localSidePanelElements: updates.localSidePanelElements } : {})
+      };
       const updatedWorkflow = {
         ...workflow,
-        triggerMetadata: updates.metadata || {}
+        triggerMetadata: updatedTriggerMetadata
       };
-
       dispatch({
         type: 'UPDATE_WORKFLOW',
         payload: updatedWorkflow
       });
-
       // Update the selected trigger node
       if (selectedNode?.id === 'trigger' && triggerTemplate) {
         const updatedTriggerNode: WorkflowNode = {
           ...selectedNode,
           ...updates,
-          metadata: updates.metadata || {}
+          metadata: updatedTriggerMetadata,
+          localSidePanelElements: updatedTriggerMetadata.localSidePanelElements || triggerTemplate?.sidePanelElements || []
         };
         dispatch({ type: 'SELECT_NODE', payload: updatedTriggerNode });
       }
-
-      // Auto-save the workflow
       try {
         await updateWorkflow(updatedWorkflow);
       } catch (error) {
@@ -835,7 +839,7 @@ export function WorkflowBuilder() {
             const branches = node.metadata?.branches || ['Branch 1', 'Branch 2'];
             const branchCount = branches.length;
             const columnWidth = 264; // width of activity card
-            const gap = 40;
+            const gap = 48;
             const svgHeight = 12;
             const svgWidth = branchCount > 1 ? (branchCount - 1) * (columnWidth + gap) : 0;
             const branchXs = branches.map((_: any, idx: number) => idx * (columnWidth + gap));
@@ -879,7 +883,7 @@ export function WorkflowBuilder() {
                   )}
                 </div>
                 {/* Vertical line directly after the card, with no margin below */}
-                <div className="w-0.5 h-8 bg-slate-300 m-0 p-0" style={{ margin: 0, padding: 0 }} />
+                <div className="w-0.5 h-5 bg-slate-300 m-0 p-0" style={{ margin: 0, padding: 0 }} />
                 {/* SVG for horizontal + rounded lines, horizontal line at the very top */}
                 {branchCount > 1 && (
                   <svg width={svgWidth} height={svgHeight} className="block" style={{ marginTop: 0 }}>
@@ -890,7 +894,7 @@ export function WorkflowBuilder() {
                       <React.Fragment key={idx}>
                         {/* Rounded corner starting at the top */}
                         <path
-                          d={`M${x},0 Q${x},6 ${x},${svgHeight}`}
+                          d={`M${x},0 Q${x},16 ${x},${svgHeight}`}
                           stroke="#CBD5E1"
                           strokeWidth="3"
                           fill="none"
@@ -1388,17 +1392,19 @@ export function WorkflowBuilder() {
                     <div className="w-8 h-8 bg-[#D8F4F2] rounded-[10px] flex items-center justify-center flex-shrink-0">
                       <Zap className="w-4 h-4 text-[#3C6D68]" />
                     </div>
-                    <h3 className="font-medium text-[#353B46] text-[14px] mb-0">Trigger</h3>
+                    <h3 className="font-medium text-[#353B46] text-[14px] mb-0">{workflow.triggerMetadata?.userAssignedName || 'Trigger'}</h3>
                   </div>
                   <p className="text-[10px] text-[#637085] leading-relaxed mt-2">
                     {processMapDescription(
-                      triggerTemplate?.description || '',
+                      workflow.triggerMetadata?.mapDescription || triggerTemplate?.description || '',
                       {
                         id: 'trigger',
                         activityTemplateId: triggerTemplate?.id || '',
                         position: { x: 0, y: 0 },
                         userAssignedName: 'Trigger',
-                        localSidePanelElements: triggerTemplate?.sidePanelElements || [],
+                        localSidePanelElements: workflow.triggerMetadata?.localSidePanelElements
+                          ? [...workflow.triggerMetadata.localSidePanelElements]
+                          : [...(triggerTemplate?.sidePanelElements || [])],
                         metadata: workflow.triggerMetadata || {}
                       }
                     )}
@@ -1482,24 +1488,22 @@ export function WorkflowBuilder() {
     <div className="flex items-center justify-between">
       <h3 className="text-[20px] font-semibold text-[#353B46]">
         {selectedNode.id === 'trigger'
-          ? 'Trigger'
+          ? selectedNode.userAssignedName || 'Trigger'
           : selectedNode.userAssignedName || selectedTemplate?.name || 'Configuration'}
       </h3>
       {/* Right: Icons */}
       <div className="flex items-center space-x-3 ml-4">
-        {selectedNode.id !== 'trigger' && (
-          <button
-            onClick={() => setIsEditingElements(!isEditingElements)}
-            className={`p-2 rounded-lg transition-colors ${
-              isEditingElements
-                ? 'bg-[#EAE8FB] text-[#2927B2]'
-                : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
-            }`}
-            title="Edit side panel elements"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
-        )}
+        <button
+          onClick={() => setIsEditingElements(!isEditingElements)}
+          className={`p-2 rounded-lg transition-colors ${
+            isEditingElements
+              ? 'bg-[#EAE8FB] text-[#2927B2]'
+              : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+          }`}
+          title="Edit side panel elements"
+        >
+          <Settings className="w-4 h-4" />
+        </button>
         <button
           onClick={() => dispatch({ type: 'SELECT_NODE', payload: null as any })}
           className="text-slate-400 hover:text-slate-600 transition-colors"
@@ -1523,7 +1527,7 @@ export function WorkflowBuilder() {
               node={selectedNode}
               onUpdate={(updates) => {
                 // Special handling for branch deletion: remove nodes in deleted branches
-                if (updates.metadata && updates.metadata.__deleteNodesInBranches) {
+                if ('metadata' in updates && updates.metadata && (updates.metadata as any).__deleteNodesInBranches) {
                   const deletedBranches = updates.metadata.__deleteNodesInBranches;
                   console.log('WorkflowBuilder: Received branch deletion signal for branches', deletedBranches);
                   // Recursively collect all node IDs to be deleted
@@ -1590,7 +1594,32 @@ export function WorkflowBuilder() {
                   handleNodeUpdate(selectedNode.id, { ...updates, metadata: cleanedMetadata });
                   return;
                 }
-                handleNodeUpdate(selectedNode.id, updates);
+                // --- NEW: Handle __updateTriggerMetadata for trigger node ---
+                if (selectedNode.id === 'trigger' && (updates as any).__updateTriggerMetadata) {
+                  const triggerUpdates = (updates as any).__updateTriggerMetadata;
+                  const updatedWorkflow = {
+                    ...workflow,
+                    triggerMetadata: {
+                      ...workflow.triggerMetadata,
+                      ...triggerUpdates
+                    }
+                  };
+                  dispatch({ type: 'UPDATE_WORKFLOW', payload: updatedWorkflow });
+                  updateWorkflow(updatedWorkflow);
+                  // Also update the selected node in context
+                  const triggerTemplate = state.activityTemplates.find(t => t.id === selectedNode.activityTemplateId);
+                  const updatedTriggerNode: WorkflowNode = {
+                    ...selectedNode,
+                    ...triggerUpdates,
+                    localSidePanelElements: updatedWorkflow.triggerMetadata?.localSidePanelElements || triggerTemplate?.sidePanelElements || [],
+                    metadata: updatedWorkflow.triggerMetadata || {}
+                  };
+                  dispatch({ type: 'SELECT_NODE', payload: updatedTriggerNode });
+                  return;
+                }
+                if (!('__updateTriggerMetadata' in updates)) {
+                  handleNodeUpdate(selectedNode.id, updates);
+                }
               }}
               previewMode={previewMode}
               isEditingElements={isEditingElements}
@@ -1963,7 +1992,7 @@ export function WorkflowBuilder() {
 
 interface ActivityNodeConfigurationProps {
   node: WorkflowNode;
-  onUpdate: (updates: Partial<WorkflowNode>) => void;
+  onUpdate: (updates: Partial<WorkflowNode> | { __updateTriggerMetadata: any }) => void;
   previewMode: boolean;
   isEditingElements: boolean;
   workflow: any;
@@ -1973,25 +2002,52 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
   const { state } = useApp();
   const template = state.activityTemplates.find(t => t.id === node.activityTemplateId);
 
+  const isTrigger = node.id === 'trigger';
+
+  // Local state for buffered editing
+  const [localActivityName, setLocalActivityName] = useState(
+    isTrigger
+      ? workflow.triggerMetadata?.userAssignedName || template?.name || ''
+      : node.userAssignedName || template?.name || ''
+  );
+  const [localSidePanelDescription, setLocalSidePanelDescription] = useState(
+    isTrigger
+      ? workflow.triggerMetadata?.sidePanelDescription || template?.sidePanelDescription || ''
+      : node.sidePanelDescription || template?.sidePanelDescription || ''
+  );
+  const [localMapDescription, setLocalMapDescription] = useState(
+    isTrigger
+      ? workflow.triggerMetadata?.mapDescription || template?.description || ''
+      : node.mapDescription || template?.description || ''
+  );
+
+  // Restore missing state declarations
   const [editingBranchIndex, setEditingBranchIndex] = useState<number | null>(null);
   const [editingBranchName, setEditingBranchName] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'Configuration' | 'Advanced' | 'User Interface'>('Configuration');
 
-  // Local state for buffered editing
-  const [localActivityName, setLocalActivityName] = useState(node.userAssignedName || template?.name || '');
-  const [localSidePanelDescription, setLocalSidePanelDescription] = useState(node.sidePanelDescription || template?.sidePanelDescription || '');
-  const [localMapDescription, setLocalMapDescription] = useState(node.mapDescription || template?.description || '');
-
-  // Keep local state in sync with node/template changes
+  // Keep local state in sync with node/template/triggerMetadata changes
   useEffect(() => {
-    setLocalActivityName(node.userAssignedName || template?.name || '');
-  }, [node.userAssignedName, template?.name]);
+    setLocalActivityName(
+      isTrigger
+        ? workflow.triggerMetadata?.userAssignedName || template?.name || ''
+        : node.userAssignedName || template?.name || ''
+    );
+  }, [isTrigger, workflow.triggerMetadata?.userAssignedName, node.userAssignedName, template?.name]);
   useEffect(() => {
-    setLocalSidePanelDescription(node.sidePanelDescription || template?.sidePanelDescription || '');
-  }, [node.sidePanelDescription, template?.sidePanelDescription]);
+    setLocalSidePanelDescription(
+      isTrigger
+        ? workflow.triggerMetadata?.sidePanelDescription || template?.sidePanelDescription || ''
+        : node.sidePanelDescription || template?.sidePanelDescription || ''
+    );
+  }, [isTrigger, workflow.triggerMetadata?.sidePanelDescription, node.sidePanelDescription, template?.sidePanelDescription]);
   useEffect(() => {
-    setLocalMapDescription(node.mapDescription || template?.description || '');
-  }, [node.mapDescription, template?.description]);
+    setLocalMapDescription(
+      isTrigger
+        ? workflow.triggerMetadata?.mapDescription || template?.description || ''
+        : node.mapDescription || template?.description || ''
+    );
+  }, [isTrigger, workflow.triggerMetadata?.mapDescription, node.mapDescription, template?.description]);
 
   if (!template) {
     return <div className="text-slate-500">Template not found</div>;
@@ -2101,13 +2157,13 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
   // Tab logic: get all tabs present in currentElements
   const tabSet = new Set((currentElements || []).map(el => el.tab || 'Configuration'));
   const allTabs = ['Configuration', 'Advanced', 'User Interface'] as const;
-  const showTabs = isEditingElements && node.id !== 'trigger';
+  const showTabs = isEditingElements;
   // Only show elements for the active tab
   const filteredElements = currentElements.filter(el => (el.tab || 'Configuration') === activeTab);
 
   return (
     <div className="space-y-4">
-      {isEditingElements && node.id !== 'trigger' ? (
+      {isEditingElements ? (
         <div className="space-y-4">
           {/* Activity Name Input */}
           <div>
@@ -2120,7 +2176,11 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
               onChange={e => setLocalActivityName(e.target.value)}
               onBlur={() => {
                 if (localActivityName !== (node.userAssignedName || template.name)) {
-                  onUpdate({ userAssignedName: localActivityName });
+                  if (node.id === 'trigger') {
+                    onUpdate({ __updateTriggerMetadata: { ...workflow.triggerMetadata, userAssignedName: localActivityName } });
+                  } else {
+                    onUpdate({ userAssignedName: localActivityName });
+                  }
                 }
               }}
               className="w-full px-3 py-1 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -2138,7 +2198,11 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
               onChange={e => setLocalSidePanelDescription(e.target.value)}
               onBlur={() => {
                 if (localSidePanelDescription !== (node.sidePanelDescription || template.sidePanelDescription)) {
-                  onUpdate({ sidePanelDescription: localSidePanelDescription });
+                  if (node.id === 'trigger') {
+                    onUpdate({ __updateTriggerMetadata: { ...workflow.triggerMetadata, sidePanelDescription: localSidePanelDescription } });
+                  } else {
+                    onUpdate({ sidePanelDescription: localSidePanelDescription });
+                  }
                 }
               }}
               className="w-full px-3 py-1 border border-[#8C95A8] rounded-[10px] focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -2157,7 +2221,11 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
                 onChange={setLocalMapDescription}
                 onBlur={() => {
                   if (localMapDescription !== (node.mapDescription || template.description)) {
-                    onUpdate({ mapDescription: localMapDescription });
+                    if (node.id === 'trigger') {
+                      onUpdate({ __updateTriggerMetadata: { ...workflow.triggerMetadata, mapDescription: localMapDescription } });
+                    } else {
+                      onUpdate({ mapDescription: localMapDescription });
+                    }
                   }
                 }}
                 uiElements={currentElements}
@@ -2166,28 +2234,30 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
           )}
 
           {/* Tab Bar for switching between Configuration, Advanced, User Interface */}
-          <div className="flex bg-[#F5F7FA] rounded-xl p-0.5 w-full max-w-full mb-4">
-            {allTabs.map((tab, idx) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={
-                  `flex-1 py-2 text-[12px] font-semibold focus:outline-none transition-all duration-150 ` +
-                  (activeTab === tab
-                    ? 'bg-white shadow text-slate-700 z-10 ' +
-                      (idx === 0 ? 'rounded-l-xl' : '') +
-                      (idx === allTabs.length - 1 ? ' rounded-r-xl' : '')
-                    : 'bg-transparent text-slate-500 hover:text-slate-700 ' +
-                      (idx === 0 ? 'rounded-l-xl' : '') +
-                      (idx === allTabs.length - 1 ? ' rounded-r-xl' : ''))
-                }
-                style={{ minWidth: 0 }}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
+          {node.id !== 'trigger' && !isConditionNode && (
+            <div className="flex bg-[#F5F7FA] rounded-xl p-0.5 w-full max-w-full mb-4">
+              {allTabs.map((tab, idx) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
+                  className={
+                    `flex-1 py-2 text-[12px] font-semibold focus:outline-none transition-all duration-150 ` +
+                    (activeTab === tab
+                      ? 'bg-white shadow text-slate-700 z-10 ' +
+                        (idx === 0 ? 'rounded-l-xl' : '') +
+                        (idx === allTabs.length - 1 ? ' rounded-r-xl' : '')
+                      : 'bg-transparent text-slate-500 hover:text-slate-700 ' +
+                        (idx === 0 ? 'rounded-l-xl' : '') +
+                        (idx === allTabs.length - 1 ? ' rounded-r-xl' : ''))
+                  }
+                  style={{ minWidth: 0 }}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+          )}
           {/* Side Panel Elements */}
           <div>
             <div className="flex items-center justify-between mb-3">
@@ -3456,6 +3526,111 @@ function WorkflowUIElementEditor({ element, onUpdate, onRemove, tabSelector, onT
             </button>
           </div>
         </div>
+      )}
+      {element.type === 'trigger-conditions-module' && (
+        <>
+          <div className="mt-4 mb-2 font-semibold text-xs text-slate-700">Attribute options</div>
+          <div className="space-y-2 mb-2">
+            {(element.propertyOptions || []).map((opt, idx) => (
+              <div key={idx} className="relative flex flex-col gap-1">
+                <div className="text-xs font-medium text-slate-600">Attribute</div>
+                <div className="flex items-start gap-2">
+                  <div className="relative w-full">
+                    <input
+                      type="text"
+                      className="px-3 py-2 border border-[#8C95A8] rounded-lg text-xs w-full pr-8"
+                      placeholder="Label"
+                      value={opt.label}
+                      onChange={e => {
+                        // Generate value from label (spaces to underscores, unique)
+                        const label = e.target.value;
+                        const baseValue = label.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+                        const others = (element.propertyOptions || []).filter((_, j) => j !== idx).map(o => o.value);
+                        let uniqueValue = baseValue;
+                        let i = 1;
+                        while (others.includes(uniqueValue)) {
+                          uniqueValue = baseValue + '_' + i;
+                          i++;
+                        }
+                        handleUpdatePropertyOption(idx, { label, value: uniqueValue });
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 p-1"
+                      onClick={() => handleRemovePropertyOption(idx)}
+                      aria-label="Remove property option"
+                      style={{ lineHeight: 0 }}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+                {/* Values for this attribute, underneath the label */}
+                <div className="flex flex-col gap-1">
+                  <div className="text-xs font-medium text-slate-600">Values</div>
+                  {(opt.values || []).map((val, vIdx) => (
+                    <div key={vIdx} className="relative flex items-start gap-1 w-full">
+                      <input
+                        type="text"
+                        className="px-2 py-1 border border-[#8C95A8] rounded-lg text-xs w-full pr-8"
+                        placeholder={`Value ${vIdx + 1}`}
+                        value={val}
+                        onChange={e => handleUpdatePropertyOptionValue(idx, vIdx, e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 p-1"
+                        onClick={() => handleRemovePropertyOptionValue(idx, vIdx)}
+                        aria-label="Remove value"
+                        style={{ lineHeight: 0 }}
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="self-start text-xs text-[#2927B2] font-medium hover:text-[#1C1876]"
+                    onClick={() => handleAddPropertyOptionValue(idx)}
+                  >+ Add Value</button>
+                </div>
+              </div>
+            ))}
+            <button
+              type="button"
+              className="text-xs text-[#2927B2] font-medium hover:text-[#1C1876]"
+              onClick={handleAddPropertyOption}
+            >+ Add Attribute Option</button>
+          </div>
+          <div className="mt-4 mb-2 font-semibold text-xs text-slate-700">Operator options</div>
+          <div className="space-y-2 mb-2">
+            {(element.operatorOptions || []).map((opt, idx) => (
+              <div key={idx} className="relative flex items-center">
+                <input
+                  type="text"
+                  className="px-3 py-2 border border-[#8C95A8] rounded-lg text-xs w-full pr-8"
+                  placeholder="Label"
+                  value={opt.label}
+                  onChange={e => handleUpdateOperatorOption(idx, { label: e.target.value })}
+                />
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 p-1"
+                  onClick={() => handleRemoveOperatorOption(idx)}
+                  aria-label="Remove operator option"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              className="text-xs text-[#2927B2] font-medium hover:text-[#1C1876]"
+              onClick={handleAddOperatorOption}
+            >+ Add Operator Option</button>
+          </div>
+        </>
       )}
     </div>
   );

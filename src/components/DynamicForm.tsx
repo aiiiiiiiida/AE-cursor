@@ -452,6 +452,8 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
               <TriggerConditionsModule
                 value={formValues[element.id] || []}
                 onChange={val => handleValueChange(element.id, val)}
+                propertyOptions={element.propertyOptions}
+                operatorOptions={element.operatorOptions}
               />
             </div>
           );

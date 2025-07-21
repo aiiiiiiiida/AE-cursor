@@ -21,21 +21,20 @@ const LOGIC_OPTIONS = [
   { label: 'OR', value: 'or' },
 ];
 
-function getAttributeValues(attribute: string) {
-  const attr = ATTRIBUTE_OPTIONS.find(a => a.value === attribute);
-  return attr ? attr.values : [];
-}
-
 export default function TriggerConditionsModule({
   conditions: propConditions,
   onConditionsChange,
   value,
-  onChange
+  onChange,
+  propertyOptions,
+  operatorOptions
 }: {
   conditions?: any[];
   onConditionsChange?: (conditions: any[]) => void;
   value?: any[];
   onChange?: (conditions: any[]) => void;
+  propertyOptions?: { label: string; value: string; values: string[] }[];
+  operatorOptions?: { label: string; value: string }[];
 } = {}) {
   const [internalConditions, setInternalConditions] = useState<any[]>(propConditions || []);
   const conditions = value !== undefined ? value : internalConditions;
@@ -46,6 +45,15 @@ export default function TriggerConditionsModule({
   };
   const [openDropdownIdx, setOpenDropdownIdx] = useState<number | null>(null);
   const dropdownRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // Use propertyOptions and operatorOptions if provided, otherwise fallback
+  const ATTRS = propertyOptions && propertyOptions.length > 0 ? propertyOptions : ATTRIBUTE_OPTIONS;
+  const OPS = operatorOptions && operatorOptions.length > 0 ? operatorOptions : OPERATOR_OPTIONS;
+
+  function getAttributeValues(attribute: string) {
+    const attr = ATTRS.find(a => a.value === attribute);
+    return attr ? attr.values : [];
+  }
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -160,7 +168,7 @@ export default function TriggerConditionsModule({
                   onChange={e => handleAttributeChange(idx, e.target.value)}
                 >
                   <option value="">Attribute</option>
-                  {ATTRIBUTE_OPTIONS.map(opt => (
+                  {ATTRS.map((opt: { label: string; value: string }) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
@@ -172,7 +180,7 @@ export default function TriggerConditionsModule({
                     value={cond.operator}
                     onChange={e => handleOperatorChange(idx, e.target.value)}
                   >
-                    {OPERATOR_OPTIONS.map(opt => (
+                    {OPS.map(opt => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>

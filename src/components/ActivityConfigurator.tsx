@@ -853,6 +853,7 @@ function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePrevi
           </div>
 
           {/* Tab Bar for switching between Configuration, Advanced, User Interface */}
+          {!(editedTemplate.name.toLowerCase().includes('trigger') || editedTemplate.icon === 'Zap' || editedTemplate.name.toLowerCase() === 'condition' || editedTemplate.icon === 'Split') && (
           <div className="flex bg-[#F5F7FA] rounded-xl p-0.5 w-full max-w-full mb-4">
             {allTabs.map((tab, idx) => (
               <button
@@ -876,6 +877,7 @@ function TemplateEditor({ template, onSave, onCancel, previewMode, onTogglePrevi
               </button>
             ))}
           </div>
+          )}
           {/* Add UI Element Button for Active Tab */}
           <div className="flex items-center justify-between mb-3">
             <label className="block text-sm font-medium text-slate-700">UI Elements</label>
