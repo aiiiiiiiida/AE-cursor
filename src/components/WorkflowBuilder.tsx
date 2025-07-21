@@ -1450,21 +1450,21 @@ export function WorkflowBuilder() {
         <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg border border-slate-200 p-2 flex flex-col space-y-1">
           <button
             onClick={handleZoomIn}
-            className="pb-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+            className="pb-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-sm transition-colors"
             title="Zoom In"
           >
             <Plus className="w-4 h-4" />
           </button>
           <button
             onClick={handleZoomOut}
-            className="pb-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+            className="pb-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-sm transition-colors"
             title="Zoom Out"
           >
             <Minus className="w-4 h-4" />
           </button>
           <button
             onClick={handleCenterCanvas}
-            className="p-0 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+            className="p-0 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-sm transition-colors"
             title="Center Canvas"
           >
             <Scan className="w-4 h-4" />
