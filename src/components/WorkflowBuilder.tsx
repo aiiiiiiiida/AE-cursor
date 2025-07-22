@@ -182,6 +182,8 @@ export function WorkflowBuilder() {
   ]);
   const [categoryInput, setCategoryInput] = useState(detailsForm.category || '');
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  // Add at the top of WorkflowBuilder (inside the component, after useState declarations):
+  const [branchRenameError, setBranchRenameError] = useState<string | null>(null);
 
   const workflow = state.workflows.find(w => w.id === workflowId);
   const selectedNode = state.selectedNode;
@@ -947,30 +949,30 @@ export function WorkflowBuilder() {
                         {editingBranch === branchName ? (
                           <input
                             ref={inputRef}
-                            className="bg-[#C6F2F2] text-[#2B4C4C] px-2 py-1 rounded-lg text-xs font-normal mb-0 mt-0 outline-none border border-[#2B4C4C]"
+                            className={`bg-[#C6F2F2] text-[#2B4C4C] px-2 py-1 rounded-lg text-xs font-normal mb-0 mt-0 outline-none border ${(editingBranch === branchName && branchRenameError) ? 'border-red-500' : 'border-[#2B4C4C]'}`}
                             value={editingBranchValue}
-                            onChange={e => setEditingBranchValue(e.target.value)}
-                            onBlur={() => {
-                              if (editingBranchValue && editingBranchValue !== branchName) {
-                                updateBranchNameEverywhere(branchName, editingBranchValue);
-                                // --- Force re-select node from latest workflow state ---
-                                setTimeout(() => {
-                                  const latestWorkflow = state.workflows.find(w => w.id === workflowId);
-                                  if (selectedNode && latestWorkflow) {
-                                    const updatedNode = latestWorkflow.nodes.find((n: any) => n.id === selectedNode.id);
-                                    if (updatedNode) {
-                                      dispatch({ type: 'SELECT_NODE', payload: updatedNode });
-                                    }
-                                  }
-                                }, 0);
+                            onChange={e => {
+                              setEditingBranchValue(e.target.value);
+                              if (editingBranch === branchName) {
+                                const trimmed = e.target.value.trim();
+                                const allBranches = getAllBranches().filter(b => b !== branchName);
+                                if (trimmed && allBranches.some(b => b.trim().toLowerCase() === trimmed.toLowerCase())) {
+                                  setBranchRenameError('A branch with this name already exists.');
+                                } else {
+                                  setBranchRenameError(null);
+                                }
                               }
-                              setEditingBranch(null);
                             }}
-                            onKeyDown={e => {
-                              if (e.key === 'Enter') {
-                                if (editingBranchValue && editingBranchValue !== branchName) {
+                            onBlur={() => {
+                              if (editingBranch === branchName) {
+                                const trimmed = editingBranchValue.trim();
+                                const allBranches = getAllBranches().filter(b => b !== branchName);
+                                if (trimmed && allBranches.some(b => b.trim().toLowerCase() === trimmed.toLowerCase())) {
+                                  setBranchRenameError('A branch with this name already exists.');
+                                  return;
+                                }
+                                if (editingBranchValue && editingBranchValue !== branchName && !branchRenameError) {
                                   updateBranchNameEverywhere(branchName, editingBranchValue);
-                                  // --- Force re-select node from latest workflow state ---
                                   setTimeout(() => {
                                     const latestWorkflow = state.workflows.find(w => w.id === workflowId);
                                     if (selectedNode && latestWorkflow) {
@@ -982,8 +984,36 @@ export function WorkflowBuilder() {
                                   }, 0);
                                 }
                                 setEditingBranch(null);
-                              } else if (e.key === 'Escape') {
-                                setEditingBranch(null);
+                                setBranchRenameError(null);
+                              }
+                            }}
+                            onKeyDown={e => {
+                              if (editingBranch === branchName) {
+                                if (e.key === 'Enter') {
+                                  const trimmed = editingBranchValue.trim();
+                                  const allBranches = getAllBranches().filter(b => b !== branchName);
+                                  if (trimmed && allBranches.some(b => b.trim().toLowerCase() === trimmed.toLowerCase())) {
+                                    setBranchRenameError('A branch with this name already exists.');
+                                    return;
+                                  }
+                                  if (editingBranchValue && editingBranchValue !== branchName && !branchRenameError) {
+                                    updateBranchNameEverywhere(branchName, editingBranchValue);
+                                    setTimeout(() => {
+                                      const latestWorkflow = state.workflows.find(w => w.id === workflowId);
+                                      if (selectedNode && latestWorkflow) {
+                                        const updatedNode = latestWorkflow.nodes.find((n: any) => n.id === selectedNode.id);
+                                        if (updatedNode) {
+                                          dispatch({ type: 'SELECT_NODE', payload: updatedNode });
+                                        }
+                                      }
+                                    }, 0);
+                                  }
+                                  setEditingBranch(null);
+                                  setBranchRenameError(null);
+                                } else if (e.key === 'Escape') {
+                                  setEditingBranch(null);
+                                  setBranchRenameError(null);
+                                }
                               }
                             }}
                             autoFocus
@@ -1001,6 +1031,9 @@ export function WorkflowBuilder() {
                           >
                             {branchName}
                           </div>
+                        )}
+                        {editingBranch === branchName && branchRenameError && (
+                          <div className="text-xs text-red-500 mt-1">{branchRenameError}</div>
                         )}
                         {/* Vertical line from tag to first node or plus */}
                         <div className="w-0.5 h-4 bg-slate-300 m-0 p-0" style={{ margin: 0, padding: 0 }} />

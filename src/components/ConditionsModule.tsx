@@ -199,6 +199,9 @@ export default function ConditionsModule({ branches: propBranches, onBranchesCha
     groupLogic?: string;
   };
 
+  // Add local error state for branch renaming:
+  const [branchRenameError, setBranchRenameError] = useState<string | null>(null);
+
   return (
     <div className="space-y-4">
       {branches.map((branch, branchIdx) => (
@@ -208,27 +211,57 @@ export default function ConditionsModule({ branches: propBranches, onBranchesCha
               {editingBranchIdx === branchIdx ? (
                 <input
                   ref={inputRef}
-                  className="px-3 py-1 rounded-lg text-xs font-medium bg-[#DDF3F6] text-[#2B6476] outline-none border border-[#2B6476]"
+                  className={`px-3 py-1 rounded-lg text-xs font-medium bg-[#DDF3F6] text-[#2B6476] outline-none border ${(editingBranchIdx === branchIdx && branchRenameError) ? 'border-red-500' : 'border-[#2B6476]'}`}
                   value={editingBranchValue}
-                  onChange={e => setEditingBranchValue(e.target.value)}
-                  onBlur={() => {
-                    if (editingBranchValue && editingBranchValue !== branch.name) {
-                      const newBranches = branches.map((b, i) => i === branchIdx ? { ...b, name: editingBranchValue } : b);
-                      updateBranches(newBranches);
-                      if (onBranchRename) onBranchRename(branch.name, editingBranchValue);
+                  onChange={e => {
+                    setEditingBranchValue(e.target.value);
+                    if (editingBranchIdx === branchIdx) {
+                      const trimmed = e.target.value.trim();
+                      const allBranches = branches.map(b => b.name).filter(name => name !== branch.name);
+                      if (trimmed && allBranches.some(name => name.trim().toLowerCase() === trimmed.toLowerCase())) {
+                        setBranchRenameError('A branch with this name already exists.');
+                      } else {
+                        setBranchRenameError(null);
+                      }
                     }
-                    setEditingBranchIdx(null);
                   }}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
-                      if (editingBranchValue && editingBranchValue !== branch.name) {
+                  onBlur={() => {
+                    if (editingBranchIdx === branchIdx) {
+                      const trimmed = editingBranchValue.trim();
+                      const allBranches = branches.map(b => b.name).filter(name => name !== branch.name);
+                      if (trimmed && allBranches.some(name => name.trim().toLowerCase() === trimmed.toLowerCase())) {
+                        setBranchRenameError('A branch with this name already exists.');
+                        return;
+                      }
+                      if (editingBranchValue && editingBranchValue !== branch.name && !branchRenameError) {
                         const newBranches = branches.map((b, i) => i === branchIdx ? { ...b, name: editingBranchValue } : b);
                         updateBranches(newBranches);
                         if (onBranchRename) onBranchRename(branch.name, editingBranchValue);
                       }
                       setEditingBranchIdx(null);
-                    } else if (e.key === 'Escape') {
-                      setEditingBranchIdx(null);
+                      setBranchRenameError(null);
+                    }
+                  }}
+                  onKeyDown={e => {
+                    if (editingBranchIdx === branchIdx) {
+                      if (e.key === 'Enter') {
+                        const trimmed = editingBranchValue.trim();
+                        const allBranches = branches.map(b => b.name).filter(name => name !== branch.name);
+                        if (trimmed && allBranches.some(name => name.trim().toLowerCase() === trimmed.toLowerCase())) {
+                          setBranchRenameError('A branch with this name already exists.');
+                          return;
+                        }
+                        if (editingBranchValue && editingBranchValue !== branch.name && !branchRenameError) {
+                          const newBranches = branches.map((b, i) => i === branchIdx ? { ...b, name: editingBranchValue } : b);
+                          updateBranches(newBranches);
+                          if (onBranchRename) onBranchRename(branch.name, editingBranchValue);
+                        }
+                        setEditingBranchIdx(null);
+                        setBranchRenameError(null);
+                      } else if (e.key === 'Escape') {
+                        setEditingBranchIdx(null);
+                        setBranchRenameError(null);
+                      }
                     }
                   }}
                   autoFocus
@@ -246,6 +279,9 @@ export default function ConditionsModule({ branches: propBranches, onBranchesCha
                 >
                   {branch.name}
                 </span>
+              )}
+              {editingBranchIdx === branchIdx && branchRenameError && (
+                <div className="text-xs text-red-500 mt-1">{branchRenameError}</div>
               )}
               <button
                 type="button"
