@@ -953,6 +953,16 @@ export function WorkflowBuilder() {
                             onBlur={() => {
                               if (editingBranchValue && editingBranchValue !== branchName) {
                                 updateBranchNameEverywhere(branchName, editingBranchValue);
+                                // --- Force re-select node from latest workflow state ---
+                                setTimeout(() => {
+                                  const latestWorkflow = state.workflows.find(w => w.id === workflowId);
+                                  if (selectedNode && latestWorkflow) {
+                                    const updatedNode = latestWorkflow.nodes.find((n: any) => n.id === selectedNode.id);
+                                    if (updatedNode) {
+                                      dispatch({ type: 'SELECT_NODE', payload: updatedNode });
+                                    }
+                                  }
+                                }, 0);
                               }
                               setEditingBranch(null);
                             }}
@@ -960,6 +970,16 @@ export function WorkflowBuilder() {
                               if (e.key === 'Enter') {
                                 if (editingBranchValue && editingBranchValue !== branchName) {
                                   updateBranchNameEverywhere(branchName, editingBranchValue);
+                                  // --- Force re-select node from latest workflow state ---
+                                  setTimeout(() => {
+                                    const latestWorkflow = state.workflows.find(w => w.id === workflowId);
+                                    if (selectedNode && latestWorkflow) {
+                                      const updatedNode = latestWorkflow.nodes.find((n: any) => n.id === selectedNode.id);
+                                      if (updatedNode) {
+                                        dispatch({ type: 'SELECT_NODE', payload: updatedNode });
+                                      }
+                                    }
+                                  }, 0);
                                 }
                                 setEditingBranch(null);
                               } else if (e.key === 'Escape') {
@@ -1217,13 +1237,14 @@ export function WorkflowBuilder() {
   // Helper to update all references to a branch name in the workflow
   function updateBranchNameEverywhere(oldName: string, newName: string) {
     if (!workflow) return;
-    // Update nodes' metadata.branch
+    // Update nodes' metadata.branch and metadata.branches for ALL nodes
     const updatedNodes = workflow.nodes.map((node: any) => {
       let updated = { ...node };
+      // Update branch assignment
       if (node.metadata?.branch === oldName) {
         updated = { ...updated, metadata: { ...updated.metadata, branch: newName } };
       }
-      // If this is a condition node, update its branches array
+      // Update branches array for ALL nodes (not just condition nodes)
       if (Array.isArray(node.metadata?.branches)) {
         updated = {
           ...updated,
@@ -1233,7 +1254,7 @@ export function WorkflowBuilder() {
           }
         };
       }
-      // If there are other references (e.g., branchConditions), update those too
+      // Update branchConditions keys
       if (node.metadata?.branchConditions) {
         const newBranchConditions: any = {};
         Object.entries(node.metadata.branchConditions).forEach(([k, v]) => {
@@ -1247,12 +1268,66 @@ export function WorkflowBuilder() {
           }
         };
       }
+      // --- Update nested branches in all conditions-module values in metadata ---
+      if (updated.metadata) {
+        Object.keys(updated.metadata).forEach((key) => {
+          const val = updated.metadata[key];
+          if (val && typeof val === 'object' && Array.isArray(val.branches)) {
+            val.branches = val.branches.map((branchObj: any) => {
+              if (branchObj && typeof branchObj === 'object' && typeof branchObj.name === 'string') {
+                return { ...branchObj, name: branchObj.name === oldName ? newName : branchObj.name };
+              }
+              return branchObj;
+            });
+          }
+        });
+      }
       return updated;
     });
-    const updatedWorkflow = { ...workflow, nodes: updatedNodes };
+    // --- NEW: Update metadata.branch for all child nodes referencing the old branch name ---
+    const fullyUpdatedNodes = updatedNodes.map((node: any) => {
+      if (node.metadata?.branch === oldName) {
+        return { ...node, metadata: { ...node.metadata, branch: newName } };
+      }
+      return node;
+    });
+    const updatedWorkflow = { ...workflow, nodes: fullyUpdatedNodes };
+    // [NEW LOG] Print metadata.branches of all nodes after branch rename
+    console.log('[NEW LOG] Updated workflow nodes branches:', fullyUpdatedNodes.map(n => ({ id: n.id, branches: n.metadata?.branches, branch: n.metadata?.branch })));
     dispatch({ type: 'UPDATE_WORKFLOW', payload: updatedWorkflow });
     updateWorkflow(updatedWorkflow);
+    // --- Update selected node in context if it exists ---
+    if (selectedNode) {
+      const updatedNode = fullyUpdatedNodes.find((n: any) => n.id === selectedNode.id);
+      if (updatedNode) {
+        dispatch({ type: 'SELECT_NODE', payload: updatedNode });
+      }
+    }
   }
+
+  // --- Keep selectedNode in sync with latest workflow state ---
+  useEffect(() => {
+    if (selectedNode && selectedNode.id !== 'trigger' && workflow) {
+      const updatedNode = workflow.nodes.find((n: any) => n.id === selectedNode.id);
+      if (updatedNode && JSON.stringify(updatedNode) !== JSON.stringify(selectedNode)) {
+        dispatch({ type: 'SELECT_NODE', payload: updatedNode });
+      }
+    }
+    // For trigger node, keep in sync with workflow.triggerMetadata
+    if (selectedNode && selectedNode.id === 'trigger' && workflow && workflow.triggerMetadata) {
+      const triggerTemplate = state.activityTemplates.find(t => t.id === selectedNode.activityTemplateId);
+      const updatedTriggerNode = {
+        ...selectedNode,
+        ...workflow.triggerMetadata,
+        localSidePanelElements: workflow.triggerMetadata?.localSidePanelElements || triggerTemplate?.sidePanelElements || [],
+        metadata: workflow.triggerMetadata || {}
+      };
+      // Only update if changed (deep compare)
+      if (JSON.stringify(updatedTriggerNode) !== JSON.stringify(selectedNode)) {
+        dispatch({ type: 'SELECT_NODE', payload: updatedTriggerNode });
+      }
+    }
+  }, [workflow, workflow?.nodes, workflow?.triggerMetadata, selectedNode, state.activityTemplates]);
 
   return (
     <div className="flex h-screen bg-white">
@@ -1512,155 +1587,163 @@ export function WorkflowBuilder() {
       </div>
 
       {/* Right Configuration Panel - Fixed Position under header */}
-      {selectedNode && (
-        <div className="fixed top-[73px] right-0 w-[420px] h-[calc(100vh-73px)] bg-white border-l border-slate-200 flex flex-col z-10 transition-transform duration-300">
-          {/* Side Panel Header */}
-          <div className="bg-white p-4 flex justify-between items-start">
-  {/* Left: Title + optional subtitle */}
-  <div className="flex-1">
-    <div className="flex items-center justify-between">
-      <h3 className="text-[20px] font-semibold text-[#353B46]">
-        {selectedNode.id === 'trigger'
-          ? selectedNode.userAssignedName || 'Trigger'
-          : selectedNode.userAssignedName || selectedTemplate?.name || 'Configuration'}
-      </h3>
-      {/* Right: Icons */}
-      <div className="flex items-center space-x-3 ml-4">
-        <button
-          onClick={() => setIsEditingElements(!isEditingElements)}
-          className={`p-2 rounded-lg transition-colors ${
-            isEditingElements
-              ? 'bg-[#EAE8FB] text-[#2927B2]'
-              : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
-          }`}
-          title="Edit side panel elements"
-        >
-          <Settings className="w-4 h-4" />
-        </button>
-        <button
-          onClick={() => dispatch({ type: 'SELECT_NODE', payload: null as any })}
-          className="text-slate-400 hover:text-slate-600 transition-colors"
-        >
-          <X className="w-5 h-5" />
-        </button>
-      </div>
-    </div>
+      {selectedNode && (() => {
+        // Always get the latest node from the workflow state by id
+        const latestNode = selectedNode.id === 'trigger'
+          ? selectedNode // trigger node is handled separately
+          : workflow.nodes.find((n: any) => n.id === selectedNode.id) || selectedNode;
+        return (
+          <div className="fixed top-[73px] right-0 w-[420px] h-[calc(100vh-73px)] bg-white border-l border-slate-200 flex flex-col z-10 transition-transform duration-300">
+            {/* Side Panel Header */}
+            <div className="bg-white p-4 flex justify-between items-start">
+              {/* Left: Title + optional subtitle */}
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-[20px] font-semibold text-[#353B46]">
+                    {selectedNode.id === 'trigger'
+                      ? selectedNode.userAssignedName || 'Trigger'
+                      : selectedNode.userAssignedName || selectedTemplate?.name || 'Configuration'}
+                  </h3>
+                  {/* Right: Icons */}
+                  <div className="flex items-center space-x-3 ml-4">
+                    <button
+                      onClick={() => setIsEditingElements(!isEditingElements)}
+                      className={`p-2 rounded-lg transition-colors ${
+                        isEditingElements
+                          ? 'bg-[#EAE8FB] text-[#2927B2]'
+                          : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+                      }`}
+                      title="Edit side panel elements"
+                    >
+                      <Settings className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => dispatch({ type: 'SELECT_NODE', payload: null as any })}
+                      className="text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
 
-    {(selectedNode.sidePanelDescription || selectedTemplate?.sidePanelDescription) && (
-      <p className="text-[13px] text-[#464F5E] mt-1">
-        {selectedNode.sidePanelDescription || selectedTemplate?.sidePanelDescription}
-      </p>
-    )}
-  </div>
-</div>
+                {(selectedNode.sidePanelDescription || selectedTemplate?.sidePanelDescription) && (
+                  <p className="text-[13px] text-[#464F5E] mt-1">
+                    {selectedNode.sidePanelDescription || selectedTemplate?.sidePanelDescription}
+                  </p>
+                )}
+              </div>
+            </div>
 
-
-          <div className="flex-1 overflow-y-auto p-4">
-            <ActivityNodeConfiguration
-              node={selectedNode}
-              onUpdate={(updates) => {
-                // Special handling for branch deletion: remove nodes in deleted branches
-                if ('metadata' in updates && updates.metadata && (updates.metadata as any).__deleteNodesInBranches) {
-                  const deletedBranches = updates.metadata.__deleteNodesInBranches;
-                  console.log('WorkflowBuilder: Received branch deletion signal for branches', deletedBranches);
-                  // Recursively collect all node IDs to be deleted
-                  const idsToDelete = collectAllNodeIdsToDelete(workflow.nodes, deletedBranches, getActivityTemplate);
-                  console.log('WorkflowBuilder: Deleting node IDs', Array.from(idsToDelete));
-                  // Repair branch assignments before filtering (optional, but safe)
-                  const repairedNodes = repairBranchAssignments([...workflow.nodes], getActivityTemplate);
-                  const filteredNodes = repairedNodes.filter((n: any) => !idsToDelete.has(n.id));
-                  const cleanedMetadata = { ...updates.metadata };
-                  delete cleanedMetadata.__deleteNodesInBranches;
-                  let updatedWorkflow = {
-                    ...workflow,
-                    nodes: filteredNodes
-                  };
-                  // Deep clean all metadata for deleted branches
-                  updatedWorkflow = deepCleanWorkflowForDeletedBranches(updatedWorkflow, deletedBranches);
-                  // Remove nodes whose metadata.branch is not in any Condition node's branches or 'main'
-                  const validBranches = new Set(['main']);
-                  updatedWorkflow.nodes.forEach((node: any) => {
-                    const template = getActivityTemplate(node.activityTemplateId);
-                    if (template && (template.name.toLowerCase().includes('condition') || (template.description && template.description.toLowerCase().includes('condition')))) {
-                      (node.metadata?.branches || []).forEach((b: string) => validBranches.add(b));
+            <div className="flex-1 overflow-y-auto p-4">
+              <ActivityNodeConfiguration
+                node={latestNode}
+                onBranchRename={(oldName: string, newName: string) => {
+                  updateBranchNameEverywhere(oldName, newName);
+                }}
+                onUpdate={(updates) => {
+                  // Special handling for branch deletion: remove nodes in deleted branches
+                  if ('metadata' in updates && updates.metadata && (updates.metadata as any).__deleteNodesInBranches) {
+                    const deletedBranches = updates.metadata.__deleteNodesInBranches;
+                    console.log('WorkflowBuilder: Received branch deletion signal for branches', deletedBranches);
+                    // Recursively collect all node IDs to be deleted
+                    const idsToDelete = collectAllNodeIdsToDelete(workflow.nodes, deletedBranches, getActivityTemplate);
+                    console.log('WorkflowBuilder: Deleting node IDs', Array.from(idsToDelete));
+                    // Repair branch assignments before filtering (optional, but safe)
+                    const repairedNodes = repairBranchAssignments([...workflow.nodes], getActivityTemplate);
+                    const filteredNodes = repairedNodes.filter((n: any) => !idsToDelete.has(n.id));
+                    const cleanedMetadata = { ...updates.metadata };
+                    delete cleanedMetadata.__deleteNodesInBranches;
+                    let updatedWorkflow = {
+                      ...workflow,
+                      nodes: filteredNodes
+                    };
+                    // Deep clean all metadata for deleted branches
+                    updatedWorkflow = deepCleanWorkflowForDeletedBranches(updatedWorkflow, deletedBranches);
+                    // Remove nodes whose metadata.branch is not in any Condition node's branches or 'main'
+                    const validBranches = new Set(['main']);
+                    updatedWorkflow.nodes.forEach((node: any) => {
+                      const template = getActivityTemplate(node.activityTemplateId);
+                      if (template && (template.name.toLowerCase().includes('condition') || (template.description && template.description.toLowerCase().includes('condition')))) {
+                        (node.metadata?.branches || []).forEach((b: string) => validBranches.add(b));
+                      }
+                    });
+                    updatedWorkflow.nodes = updatedWorkflow.nodes.filter((n: any) => validBranches.has(n.metadata?.branch || 'main'));
+                    // Debug: log the workflow state after cleaning
+                    console.log('Workflow after branch deletion:', JSON.stringify(updatedWorkflow, null, 2));
+                    dispatch({ type: 'UPDATE_WORKFLOW', payload: updatedWorkflow });
+                    updateWorkflow(updatedWorkflow);
+                    console.log('WorkflowBuilder: Updated workflow nodes', updatedWorkflow.nodes.map(n => n.id));
+                    // If the current node is being deleted, do not update it further
+                    if (idsToDelete.has(selectedNode.id)) {
+                      dispatch({ type: 'SELECT_NODE', payload: null });
+                      return;
                     }
-                  });
-                  updatedWorkflow.nodes = updatedWorkflow.nodes.filter((n: any) => validBranches.has(n.metadata?.branch || 'main'));
-                  // Debug: log the workflow state after cleaning
-                  console.log('Workflow after branch deletion:', JSON.stringify(updatedWorkflow, null, 2));
-                  dispatch({ type: 'UPDATE_WORKFLOW', payload: updatedWorkflow });
-                  updateWorkflow(updatedWorkflow);
-                  console.log('WorkflowBuilder: Updated workflow nodes', updatedWorkflow.nodes.map(n => n.id));
-                  // If the current node is being deleted, do not update it further
-                  if (idsToDelete.has(selectedNode.id)) {
-                    dispatch({ type: 'SELECT_NODE', payload: null });
+                    // Always update the selected node to the latest version from the workflow
+                    let updatedNode = updatedWorkflow.nodes.find((n: any) => n.id === selectedNode.id);
+                    if (updatedNode) {
+                      // If this is a condition node, prune its metadata.branches to only include branches that still exist
+                      const template = getActivityTemplate(updatedNode.activityTemplateId);
+                      if (
+                        template &&
+                        (template.name.toLowerCase().includes('condition') ||
+                          (template.description && template.description.toLowerCase().includes('condition')))
+                      ) {
+                        const allBranchNames = new Set(
+                          updatedWorkflow.nodes.map((n: any) => n.metadata?.branch || 'main')
+                        );
+                        if (updatedNode.metadata && Array.isArray(updatedNode.metadata.branches)) {
+                          updatedNode = {
+                            ...updatedNode,
+                            metadata: {
+                              ...updatedNode.metadata,
+                              branches: updatedNode.metadata.branches.filter((b: string) =>
+                                allBranchNames.has(b)
+                              )
+                            }
+                          };
+                        }
+                      }
+                      dispatch({ type: 'SELECT_NODE', payload: updatedNode });
+                    }
+                    // Continue with normal update for the condition node itself
+                    handleNodeUpdate(selectedNode.id, { ...updates, metadata: cleanedMetadata });
                     return;
                   }
-                  // Always update the selected node to the latest version from the workflow
-                  let updatedNode = updatedWorkflow.nodes.find((n: any) => n.id === selectedNode.id);
-                  if (updatedNode) {
-                    // If this is a condition node, prune its metadata.branches to only include branches that still exist
-                    const template = getActivityTemplate(updatedNode.activityTemplateId);
-                    if (
-                      template &&
-                      (template.name.toLowerCase().includes('condition') ||
-                        (template.description && template.description.toLowerCase().includes('condition')))
-                    ) {
-                      const allBranchNames = new Set(
-                        updatedWorkflow.nodes.map((n: any) => n.metadata?.branch || 'main')
-                      );
-                      if (updatedNode.metadata && Array.isArray(updatedNode.metadata.branches)) {
-                        updatedNode = {
-                          ...updatedNode,
-                          metadata: {
-                            ...updatedNode.metadata,
-                            branches: updatedNode.metadata.branches.filter((b: string) =>
-                              allBranchNames.has(b)
-                            )
-                          }
-                        };
+                  // --- NEW: Handle __updateTriggerMetadata for trigger node ---
+                  if (selectedNode.id === 'trigger' && (updates as any).__updateTriggerMetadata) {
+                    const triggerUpdates = (updates as any).__updateTriggerMetadata;
+                    const updatedWorkflow = {
+                      ...workflow,
+                      triggerMetadata: {
+                        ...workflow.triggerMetadata,
+                        ...triggerUpdates
                       }
-                    }
-                    dispatch({ type: 'SELECT_NODE', payload: updatedNode });
+                    };
+                    dispatch({ type: 'UPDATE_WORKFLOW', payload: updatedWorkflow });
+                    updateWorkflow(updatedWorkflow);
+                    // Also update the selected node in context
+                    const triggerTemplate = state.activityTemplates.find(t => t.id === selectedNode.activityTemplateId);
+                    const updatedTriggerNode: WorkflowNode = {
+                      ...selectedNode,
+                      ...triggerUpdates,
+                      localSidePanelElements: updatedWorkflow.triggerMetadata?.localSidePanelElements || triggerTemplate?.sidePanelElements || [],
+                      metadata: updatedWorkflow.triggerMetadata || {}
+                    };
+                    dispatch({ type: 'SELECT_NODE', payload: updatedTriggerNode });
+                    return;
                   }
-                  // Continue with normal update for the condition node itself
-                  handleNodeUpdate(selectedNode.id, { ...updates, metadata: cleanedMetadata });
-                  return;
-                }
-                // --- NEW: Handle __updateTriggerMetadata for trigger node ---
-                if (selectedNode.id === 'trigger' && (updates as any).__updateTriggerMetadata) {
-                  const triggerUpdates = (updates as any).__updateTriggerMetadata;
-                  const updatedWorkflow = {
-                    ...workflow,
-                    triggerMetadata: {
-                      ...workflow.triggerMetadata,
-                      ...triggerUpdates
-                    }
-                  };
-                  dispatch({ type: 'UPDATE_WORKFLOW', payload: updatedWorkflow });
-                  updateWorkflow(updatedWorkflow);
-                  // Also update the selected node in context
-                  const triggerTemplate = state.activityTemplates.find(t => t.id === selectedNode.activityTemplateId);
-                  const updatedTriggerNode: WorkflowNode = {
-                    ...selectedNode,
-                    ...triggerUpdates,
-                    localSidePanelElements: updatedWorkflow.triggerMetadata?.localSidePanelElements || triggerTemplate?.sidePanelElements || [],
-                    metadata: updatedWorkflow.triggerMetadata || {}
-                  };
-                  dispatch({ type: 'SELECT_NODE', payload: updatedTriggerNode });
-                  return;
-                }
-                if (!('__updateTriggerMetadata' in updates)) {
-                  handleNodeUpdate(selectedNode.id, updates);
-                }
-              }}
-              previewMode={previewMode}
-              isEditingElements={isEditingElements}
-              workflow={workflow}
-            />
+                  if (!('__updateTriggerMetadata' in updates)) {
+                    handleNodeUpdate(selectedNode.id, updates);
+                  }
+                }}
+                previewMode={previewMode}
+                isEditingElements={isEditingElements}
+                workflow={workflow}
+              />
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {showActivityDropdown && activityDropdownPosition && ReactDOM.createPortal(
         <ActivityDropdown
@@ -2025,15 +2108,19 @@ export function WorkflowBuilder() {
 
 interface ActivityNodeConfigurationProps {
   node: WorkflowNode;
+  onBranchRename: (oldName: string, newName: string) => void;
   onUpdate: (updates: Partial<WorkflowNode> | { __updateTriggerMetadata: any }) => void;
   previewMode: boolean;
   isEditingElements: boolean;
   workflow: any;
 }
 
-function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingElements, workflow }: ActivityNodeConfigurationProps) {
+function ActivityNodeConfiguration({ node, onBranchRename, onUpdate, previewMode, isEditingElements, workflow }: ActivityNodeConfigurationProps) {
   const { state } = useApp();
   const template = state.activityTemplates.find(t => t.id === node.activityTemplateId);
+
+  // --- DEBUG LOG ---
+  console.log('ActivityNodeConfiguration: node.metadata.branches =', node.metadata?.branches);
 
   const isTrigger = node.id === 'trigger';
 
@@ -2340,6 +2427,7 @@ function ActivityNodeConfiguration({ node, onUpdate, previewMode, isEditingEleme
                 onUpdate({ metadata: values });
               }
             }}
+            onBranchRename={onBranchRename}
           />
         </div>
       )}

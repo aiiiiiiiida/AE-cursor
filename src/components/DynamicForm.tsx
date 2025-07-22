@@ -83,7 +83,7 @@ function groupElements(elements: UIElement[]): (UIElement | UIElement[])[] {
   return groups;
 }
 
-export function DynamicForm({ elements, onSubmit, values = {}, onChange, level = 0, originalElements }: DynamicFormProps) {
+export function DynamicForm({ elements, onSubmit, values = {}, onChange, level = 0, originalElements, onBranchRename }: DynamicFormProps & { onBranchRename?: (oldName: string, newName: string) => void }) {
   const [formValues, setFormValues] = useState<Record<string, any>>(values);
   const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
   // Instead of keeping all dynamicElements in a flat array, track them per button id. When rendering, insert dynamic elements for a button just before that button.
@@ -334,6 +334,65 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
     setFormValues(values);
   }, [values]);
 
+  // --- NEW: Sync branches in formValues with values prop for conditions-module elements ---
+  useEffect(() => {
+    elements.forEach(element => {
+      if (element.type === 'conditions-module') {
+        const latestBranches = values[element.id]?.branches;
+        if (latestBranches && JSON.stringify(formValues[element.id]?.branches) !== JSON.stringify(latestBranches)) {
+          setFormValues(prev => ({
+            ...prev,
+            [element.id]: {
+              ...prev[element.id],
+              ...values[element.id],
+              branches: latestBranches
+            }
+          }));
+        }
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [elements, values]);
+
+  // --- FORCE SYNC: For every conditions-module, if branches differ, replace formValues[element.id] with values[element.id] ---
+  useEffect(() => {
+    elements.forEach(element => {
+      if (element.type === 'conditions-module') {
+        const latestBranches = values[element.id]?.branches;
+        const currentBranches = formValues[element.id]?.branches;
+        if (
+          latestBranches &&
+          (!currentBranches || JSON.stringify(currentBranches) !== JSON.stringify(latestBranches))
+        ) {
+          setFormValues(prev => ({
+            ...prev,
+            [element.id]: {
+              ...values[element.id]
+            }
+          }));
+        }
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [elements, values]);
+
+  // --- DEBUG LOG: Print values prop and formValues for each conditions-module element ---
+  useEffect(() => {
+    elements.forEach(element => {
+      if (element.type === 'conditions-module') {
+        console.log('[NEW LOG] [DynamicForm] values for', element.id, values[element.id]);
+        console.log('[NEW LOG] [DynamicForm] formValues for', element.id, formValues[element.id]);
+      }
+    });
+  }, [elements, values, formValues]);
+
+  // --- FORCE: Deep compare values and formValues, reset if different ---
+  useEffect(() => {
+    if (JSON.stringify(values) !== JSON.stringify(formValues)) {
+      setFormValues(values);
+    }
+  }, [values, formValues]);
+
   const indentClass = level > 0 ? `ml-0 ` : '';
   // In the rendering logic, for each button, render its dynamic elements (dynamicElements[element.id]) immediately before the button.
   // Remove the use of allElements = [...filteredElements, ...Object.values(dynamicElements).flat()];
@@ -381,7 +440,7 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
         }
         if (element.type === 'conditions-module') {
           // Always get conditionNodeNumber from form state for this node, or from the element if not present
-          const conditionNodeNumber = formValues[element.id]?.conditionNodeNumber || element.conditionNodeNumber || 1;
+          const conditionNodeNumber = formValues[element.id]?.conditionNodeNumber || ("conditionNodeNumber" in element ? (element as any).conditionNodeNumber : undefined) || 1;
           console.log('[DynamicForm] Rendering ConditionsModule:', {
             element,
             formValue: formValues[element.id],
@@ -423,6 +482,7 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
                 propertyOptions={element.propertyOptions}
                 operatorOptions={element.operatorOptions}
                 conditionNodeNumber={conditionNodeNumber}
+                onBranchRename={onBranchRename}
               />
             </div>
           );
@@ -625,7 +685,7 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
                 </label>
               )}
               {/* Render any dynamic elements this button has added AFTER the title and BEFORE the button itself */}
-              {dynamicElements[element.id] && dynamicElements[element.id].length > 0 && (
+              {dynamicElements[element.id] && Array.isArray(dynamicElements[element.id]) && dynamicElements[element.id].length > 0 && (
                 <div className="mb-4">
                   <DynamicForm
                     elements={dynamicElements[element.id]}
@@ -910,45 +970,7 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
                 </>
               )}
 
-              {element.type === 'button' && (
-                <>
-                  {element.hasTitle && element.title && (
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      {element.title}
-                    </label>
-                  )}
-
-                  {/* Render dynamic elements (if any) between title and button */}
-                  {dynamicElements[element.id] && dynamicElements[element.id].length > 0 && (
-                    <div className="mb-4">
-                      <DynamicForm
-                        elements={dynamicElements[element.id]}
-                        values={formValues}
-                        onChange={onChange}
-                        level={level + 1}
-                        originalElements={baseElements}
-                      />
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => handleButtonClick(element)}
-                    className="inline-flex items-center text-[#2927B2] font-medium text-sm hover:text-[#1C1876] transition-colors"
-                  >
-                    {element.hasIcon && element.icon && element.iconPosition !== 'right' && (
-                      <span className="mr-2">
-                        {React.createElement(getIconComponent(element.icon), { className: "w-4 h-4" })}
-                      </span>
-                    )}
-                    {element.label}
-                    {element.hasIcon && element.icon && element.iconPosition === 'right' && (
-                      <span className="ml-2">
-                        {React.createElement(getIconComponent(element.icon), { className: "w-4 h-4" })}
-                      </span>
-                    )}
-                  </button>
-                </>
-              )}
+              {/* Button rendering block is handled above, so this check is not needed here. */}
             </div>
           );
         }

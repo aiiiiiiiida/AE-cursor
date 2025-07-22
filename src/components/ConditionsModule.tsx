@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Plus, Split, ChevronDown, Trash2, X } from 'lucide-react';
 
-export default function ConditionsModule({ branches: propBranches, onBranchesChange, propertyOptions, operatorOptions, conditionNodeNumber }: {
+export default function ConditionsModule({ branches: propBranches, onBranchesChange, propertyOptions, operatorOptions, conditionNodeNumber, onBranchRename }: {
   branches?: any[];
   onBranchesChange?: (branches: any[]) => void;
   propertyOptions?: Array<{ label: string; value: string; values: string[] }>;
   operatorOptions?: Array<{ label: string; value: string }>;
   conditionNodeNumber?: number;
+  onBranchRename?: (oldName: string, newName: string) => void;
 } = {}) {
   console.log('[ConditionsModule] Received props:', { conditionNodeNumber, branches: propBranches });
   const [outerLogic, setOuterLogic] = React.useState<string>('or');
@@ -214,6 +215,7 @@ export default function ConditionsModule({ branches: propBranches, onBranchesCha
                     if (editingBranchValue && editingBranchValue !== branch.name) {
                       const newBranches = branches.map((b, i) => i === branchIdx ? { ...b, name: editingBranchValue } : b);
                       updateBranches(newBranches);
+                      if (onBranchRename) onBranchRename(branch.name, editingBranchValue);
                     }
                     setEditingBranchIdx(null);
                   }}
@@ -222,6 +224,7 @@ export default function ConditionsModule({ branches: propBranches, onBranchesCha
                       if (editingBranchValue && editingBranchValue !== branch.name) {
                         const newBranches = branches.map((b, i) => i === branchIdx ? { ...b, name: editingBranchValue } : b);
                         updateBranches(newBranches);
+                        if (onBranchRename) onBranchRename(branch.name, editingBranchValue);
                       }
                       setEditingBranchIdx(null);
                     } else if (e.key === 'Escape') {
