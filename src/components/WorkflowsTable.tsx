@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Copy, Trash2, Edit, Play, Calendar, Activity, Network,MoreHorizontal, MoreVertical, Globe, Settings, AlertTriangle, X, Bot, Workflow as WorkflowIcon, FilePenLine } from 'lucide-react';
+import { Plus, Search, Copy, Trash2, Edit, Play, Calendar, Activity, Network,MoreHorizontal, MoreVertical, Globe, Settings, AlertTriangle, X, Bot, Workflow as WorkflowIcon, FilePenLine, Rows3 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Workflow } from '../types';
 import ReactDOM from 'react-dom';
@@ -322,6 +322,8 @@ export function WorkflowsTable() {
                         <div className="flex items-center space-x-2">
                           {workflow.channel === 'Chatbot' ? (
                             <Bot className="w-4 h-4 text-slate-400" />
+                          ) : workflow.channel === 'Multichannel' ? (
+                            <Rows3 className="w-4 h-4 text-slate-400" />
                           ) : (
                             <Globe className="w-4 h-4 text-slate-400" />
                           )}
@@ -558,6 +560,7 @@ export function WorkflowsTable() {
                       <option value="">Select channel</option>
                       <option value="Web">Web</option>
                       <option value="Chatbot">Chatbot</option>
+                      <option value="Multichannel">Multichannel</option>
                     </select>
                     <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
                       <svg
@@ -666,7 +669,6 @@ export function WorkflowsTable() {
                 </div>
               </div>
               {/* Buttons */}
-              
               <div className="flex justify-end space-x-4 mt-4">
                 <button
                   type="button"

@@ -1,13 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Plus, Split, ChevronDown, Trash2, X } from 'lucide-react';
 
-export default function ConditionsModule({ branches: propBranches, onBranchesChange, propertyOptions, operatorOptions, conditionNodeNumber, onBranchRename }: {
+export default function ConditionsModule({ branches: propBranches, onBranchesChange, propertyOptions, operatorOptions, conditionNodeNumber, onBranchRename, allBranchNames }: {
   branches?: any[];
   onBranchesChange?: (branches: any[]) => void;
   propertyOptions?: Array<{ label: string; value: string; values: string[] }>;
   operatorOptions?: Array<{ label: string; value: string }>;
   conditionNodeNumber?: number;
   onBranchRename?: (oldName: string, newName: string) => void;
+  allBranchNames?: string[];
 } = {}) {
   console.log('[ConditionsModule] Received props:', { conditionNodeNumber, branches: propBranches });
   const [outerLogic, setOuterLogic] = React.useState<string>('or');
@@ -217,8 +218,8 @@ export default function ConditionsModule({ branches: propBranches, onBranchesCha
                     setEditingBranchValue(e.target.value);
                     if (editingBranchIdx === branchIdx) {
                       const trimmed = e.target.value.trim();
-                      const allBranches = branches.map(b => b.name).filter(name => name !== branch.name);
-                      if (trimmed && allBranches.some(name => name.trim().toLowerCase() === trimmed.toLowerCase())) {
+                      const allOtherBranches = (allBranchNames || []).filter(name => name !== branch.name);
+                      if (trimmed && allOtherBranches.some(name => name.trim().toLowerCase() === trimmed.toLowerCase())) {
                         setBranchRenameError('A branch with this name already exists.');
                       } else {
                         setBranchRenameError(null);
@@ -228,8 +229,8 @@ export default function ConditionsModule({ branches: propBranches, onBranchesCha
                   onBlur={() => {
                     if (editingBranchIdx === branchIdx) {
                       const trimmed = editingBranchValue.trim();
-                      const allBranches = branches.map(b => b.name).filter(name => name !== branch.name);
-                      if (trimmed && allBranches.some(name => name.trim().toLowerCase() === trimmed.toLowerCase())) {
+                      const allOtherBranches = (allBranchNames || []).filter(name => name !== branch.name);
+                      if (trimmed && allOtherBranches.some(name => name.trim().toLowerCase() === trimmed.toLowerCase())) {
                         setBranchRenameError('A branch with this name already exists.');
                         return;
                       }
@@ -246,8 +247,8 @@ export default function ConditionsModule({ branches: propBranches, onBranchesCha
                     if (editingBranchIdx === branchIdx) {
                       if (e.key === 'Enter') {
                         const trimmed = editingBranchValue.trim();
-                        const allBranches = branches.map(b => b.name).filter(name => name !== branch.name);
-                        if (trimmed && allBranches.some(name => name.trim().toLowerCase() === trimmed.toLowerCase())) {
+                        const allOtherBranches = (allBranchNames || []).filter(name => name !== branch.name);
+                        if (trimmed && allOtherBranches.some(name => name.trim().toLowerCase() === trimmed.toLowerCase())) {
                           setBranchRenameError('A branch with this name already exists.');
                           return;
                         }

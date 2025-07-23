@@ -83,6 +83,24 @@ function groupElements(elements: UIElement[]): (UIElement | UIElement[])[] {
   return groups;
 }
 
+// Helper to get all branch names from all conditions-module elements
+function getAllBranchNamesFromElements(elements: UIElement[], values: Record<string, any>): string[] {
+  let names: string[] = [];
+  elements.forEach(element => {
+    if (element.type === 'conditions-module') {
+      const branches = values[element.id]?.branches || [];
+      names.push(...branches.map((b: any) => b.name));
+    }
+    // Check nested conditional follow-ups
+    if (element.conditionalFollowUps) {
+      element.conditionalFollowUps.forEach(fu => {
+        names.push(...getAllBranchNamesFromElements(fu.elements, values));
+      });
+    }
+  });
+  return names;
+}
+
 export function DynamicForm({ elements, onSubmit, values = {}, onChange, level = 0, originalElements, onBranchRename }: DynamicFormProps & { onBranchRename?: (oldName: string, newName: string) => void }) {
   const [formValues, setFormValues] = useState<Record<string, any>>(values);
   const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
@@ -400,6 +418,7 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
 
   // Use a counter to track the index among only condition nodes
   let conditionNodeCount = 0;
+  const allBranchNames = getAllBranchNamesFromElements(elements, formValues);
   return (
     <>
       <form onSubmit={handleSubmit} className="grid md:grid-cols-2 gap-4">
@@ -483,6 +502,7 @@ export function DynamicForm({ elements, onSubmit, values = {}, onChange, level =
                 operatorOptions={element.operatorOptions}
                 conditionNodeNumber={conditionNodeNumber}
                 onBranchRename={onBranchRename}
+                allBranchNames={allBranchNames}
               />
             </div>
           );

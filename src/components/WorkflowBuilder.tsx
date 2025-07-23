@@ -2001,6 +2001,7 @@ export function WorkflowBuilder() {
     <option value="">Select channel</option>
     <option value="Web">Web</option>
     <option value="Chatbot">Chatbot</option>
+    <option value="Multichannel">Multichannel</option>
   </select>
   <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
     <svg
