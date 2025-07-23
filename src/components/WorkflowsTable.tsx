@@ -257,6 +257,7 @@ export function WorkflowsTable() {
                     />
                   </th> */}
                   <th className="text-left py-2 px-5 text-[13px] font-medium text-[#353B46] bg-[#F8F9FB] ">Name</th>
+                  <th className="text-left py-2 px-5 text-[13px] font-medium text-[#353B46] border-l border-l-[#D1D5DC] bg-[#F8F9FB] ">Category</th>
                   <th className="text-left py-2 px-6 text-[13px] font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Status</th>
                   <th className="text-left py-2 px-6 text-[13px] font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Channel</th>
                   <th className="text-left py-2 px-6 text-[13px] font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Version</th>
@@ -294,6 +295,7 @@ export function WorkflowsTable() {
                           className="rounded border-slate-300"
                         />
                       </td> */}
+                      {/* Name */}
                       <td className="py-4 px-5">
                         <div>
                           <div className="font-medium text-sm text-[#464F5E]">{workflow.name}</div>
@@ -301,6 +303,10 @@ export function WorkflowsTable() {
                             <div className="text-sm text-slate-500">{workflow.description}</div>
                           )}
                         </div>
+                      </td>
+                      {/* Category */}
+                      <td className="py-4 px-5">
+                        <span className="text-sm text-slate-600">{workflow.category ? workflow.category : '-'}</span>
                       </td>
                       <td className="py-4 px-6">
   <span
