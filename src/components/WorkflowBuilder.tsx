@@ -817,25 +817,24 @@ export function WorkflowBuilder() {
     return totalWidth;
   }
 
+  // At the top of WorkflowBuilder, before the return statement:
+  const branchesRenderedAsChildren = new Set<string>();
+  if (workflow) {
+    workflow.nodes.forEach(node => {
+      if (isConditionNode(node) && node.metadata?.branches) {
+        node.metadata.branches.forEach((b: string) => branchesRenderedAsChildren.add(b));
+      }
+    });
+  }
+
   // Render a single branch
   const renderBranch = (branch: string, branchIndex: number, parentConditionId?: string, visitedNodeIds: string[] = []) => {
     // Prevent duplicate rendering: if this branch is being rendered as a child of a Condition node, do not render it again at the top level
-    if (parentConditionId && branchIndex === 0) return null;
+    if (parentConditionId === undefined && branchesRenderedAsChildren.has(branch)) {
+      return null;
+    }
     const branchNodes = getNodesForBranch(branch);
     const isMainBranch = branch === 'main';
-    
-    // Determine if this is the first node after a Condition node in this branch
-    let isFirstNodeAfterCondition = false;
-    if (branchIndex === 0) {
-      // Find the node in workflow.nodes that is a Condition and is the immediate parent for this branch
-      const parentConditionNode = workflow.nodes.find(n => {
-        const t = getActivityTemplate(n.activityTemplateId);
-        return t && t.name === 'Condition' && n.metadata?.branches && n.metadata.branches.includes(branch);
-      });
-      if (parentConditionNode) {
-        isFirstNodeAfterCondition = true;
-      }
-    }
 
     return (
       <div key={branch} className={`flex flex-col items-center space-y-0`}>
@@ -847,149 +846,125 @@ export function WorkflowBuilder() {
         )}
 
         {/* Branch Nodes */}
-        {branchNodes.map((node, index) => {
-          // Prevent cycles: skip nodes already visited in this path
-          if (visitedNodeIds.includes(node.id)) return null;
-          const template = getActivityTemplate(node.activityTemplateId);
-          if (!template) return null;
-          const IconComponent = getIconComponent(template.icon);
-          const iconColor = getIconColor(template.iconColor || 'purple');
-          const displayDescription = isConditionNode(node)
-            ? getConditionBranchSummary(node)
-            : processMapDescription(node.mapDescription || template.description, node);
-          const isLast = index === branchNodes.length - 1;
+        {branchNodes.length > 0 ? (
+          branchNodes.map((node, index) => {
+            // Prevent cycles: skip nodes already visited in this path
+            if (visitedNodeIds.includes(node.id)) return null;
+            const template = getActivityTemplate(node.activityTemplateId);
+            if (!template) return null;
+            const IconComponent = getIconComponent(template.icon);
+            const iconColor = getIconColor(template.iconColor || 'purple');
+            const displayDescription = isConditionNode(node)
+              ? getConditionBranchSummary(node)
+              : processMapDescription(node.mapDescription || template.description, node);
+            const isLast = index === branchNodes.length - 1;
 
-          // --- NEW: Always render branch columns for every condition node (nested or not) ---
-          if (isConditionNode(node)) {
-            const branches = node.metadata?.branches || ['Branch 1', 'Branch 2'];
-            // --- DYNAMIC WIDTH CALCULATION ---
-            const gap = 48;
-            const branchWidths = branches.map((b: string) => getBranchTreeWidth(b));
-            const branchXs: number[] = [];
-            let x = 0;
-            for (let i = 0; i < branchWidths.length; i++) {
-              branchXs.push(x + branchWidths[i] / 2); // center of the branch column
-              x += branchWidths[i] + gap;
-            }
-            const svgWidth = x - gap; // total width minus last gap
-            const svgHeight = 12;
-            return (
-              <div key={node.id} className="flex flex-col items-center w-full">
-                {/* Condition Node Card */}
-                <div
-                  className={`w-[264px] bg-white rounded-xl p-4 mt-0 -mt-4 cursor-pointer shadow-sm hover:shadow-md transition-all duration-200 relative group
-                    ${selectedNode?.id === node.id
-                      ? 'border-2 border-[#4D3EE0] shadow-sm'
-                      : 'border border-slate-200'
-                    }`}
-                  onClick={e => {
-                    e.stopPropagation();
-                    handleNodeClick(node);
-                  }}
-                >
-                  <button
+            // --- NEW: Always render branch columns for every condition node (nested or not) ---
+            if (isConditionNode(node)) {
+              const branches = node.metadata?.branches || ['Branch 1', 'Branch 2'];
+              // --- DYNAMIC WIDTH CALCULATION ---
+              const gap = 48;
+              const branchWidths = branches.map((b: string) => getBranchTreeWidth(b));
+              const branchXs: number[] = [];
+              let x = 0;
+              for (let i = 0; i < branchWidths.length; i++) {
+                branchXs.push(x + branchWidths[i] / 2); // center of the branch column
+                x += branchWidths[i] + gap;
+              }
+              const svgWidth = x - gap; // total width minus last gap
+              const svgHeight = 12;
+              return (
+                <div key={node.id} className="flex flex-col items-center w-full">
+                  {/* Condition Node Card */}
+                  <div
+                    className={`w-[264px] bg-white rounded-xl p-4 mt-0 -mt-4 cursor-pointer shadow-sm hover:shadow-md transition-all duration-200 relative group
+                      ${selectedNode?.id === node.id
+                        ? 'border-2 border-[#4D3EE0] shadow-sm'
+                        : 'border border-slate-200'
+                      }`}
                     onClick={e => {
                       e.stopPropagation();
-                      handleNodeDelete(node.id);
+                      handleNodeClick(node);
                     }}
-                    className="absolute top-3 right-3 p-1 text-slate-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
                   >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ backgroundColor: iconColor.bg }}>
-                      {/* Rotate icon 90deg for Condition node only */}
-                      <IconComponent className="w-4 h-4" style={{ color: iconColor.iconColor, transform: 'rotate(90deg)' }} />
+                    <button
+                      onClick={e => {
+                        e.stopPropagation();
+                        handleNodeDelete(node.id);
+                      }}
+                      className="absolute top-3 right-3 p-1 text-slate-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ backgroundColor: iconColor.bg }}>
+                        {/* Rotate icon 90deg for Condition node only */}
+                        <IconComponent className="w-4 h-4" style={{ color: iconColor.iconColor, transform: 'rotate(90deg)' }} />
+                      </div>
+                      <h3 className="font-medium text-[#353B46] text-[14px] mb-0">{node.userAssignedName || template.name}</h3>
                     </div>
-                    <h3 className="font-medium text-[#353B46] text-[14px] mb-0">{node.userAssignedName || template.name}</h3>
+                    {displayDescription && (
+                      <>
+                        <p className="text-[10px] text-[#637085] leading-relaxed mt-2 whitespace-pre-line">{displayDescription}</p>
+                        {node.mapDescription && (
+                          <p className="text-[10px] text-[#637085] leading-relaxed mt-1 whitespace-pre-line font-semibold">{processMapDescription(node.mapDescription, node)}</p>
+                        )}
+                      </>
+                    )}
                   </div>
-                  {displayDescription && (
-                    <>
-                      <p className="text-[10px] text-[#637085] leading-relaxed mt-2 whitespace-pre-line">{displayDescription}</p>
-                      {node.mapDescription && (
-                        <p className="text-[10px] text-[#637085] leading-relaxed mt-1 whitespace-pre-line font-semibold">{processMapDescription(node.mapDescription, node)}</p>
-                      )}
-                    </>
+                  {/* Vertical line directly after the card, with no margin below */}
+                  <div className="w-0.5 h-5 bg-slate-300 m-0 p-0" style={{ margin: 0, padding: 0 }} />
+                  {/* SVG for horizontal + rounded lines, horizontal line at the very top */}
+                  {branches.length > 1 && (
+                    <svg width={svgWidth} height={svgHeight} className="block" style={{ marginTop: 0 }}>
+                      {/* Horizontal line at the very top */}
+                      <line x1={branchXs[0]} y1={0} x2={branchXs[branchXs.length - 1]} y2={0} stroke="#CBD5E1" strokeWidth="3" />
+                      {/* Rounded corners and verticals */}
+                      {branchXs.map((x, idx) => (
+                        <React.Fragment key={idx}>
+                          {/* Rounded corner starting at the top */}
+                          <path
+                            d={`M${x},0 Q${x},16 ${x},${svgHeight}`}
+                            stroke="#CBD5E1"
+                            strokeWidth="3"
+                            fill="none"
+                          />
+                        </React.Fragment>
+                      ))}
+                    </svg>
                   )}
-                </div>
-                {/* Vertical line directly after the card, with no margin below */}
-                <div className="w-0.5 h-5 bg-slate-300 m-0 p-0" style={{ margin: 0, padding: 0 }} />
-                {/* SVG for horizontal + rounded lines, horizontal line at the very top */}
-                {branches.length > 1 && (
-                  <svg width={svgWidth} height={svgHeight} className="block" style={{ marginTop: 0 }}>
-                    {/* Horizontal line at the very top */}
-                    <line x1={branchXs[0]} y1={0} x2={branchXs[branchXs.length - 1]} y2={0} stroke="#CBD5E1" strokeWidth="3" />
-                    {/* Rounded corners and verticals */}
-                    {branchXs.map((x, idx) => (
-                      <React.Fragment key={idx}>
-                        {/* Rounded corner starting at the top */}
-                        <path
-                          d={`M${x},0 Q${x},16 ${x},${svgHeight}`}
-                          stroke="#CBD5E1"
-                          strokeWidth="3"
-                          fill="none"
-                        />
-                      </React.Fragment>
-                    ))}
-                  </svg>
-                )}
-                {/* Branch columns */}
-                <div className="flex flex-row justify-center mt-0" style={{ width: svgWidth }}>
-                  {branches.map((branchName: any, branchIdx: number) => {
-                    // Filter out the current node from the branch nodes to prevent direct recursion
-                    const branchNodes = getNodesForBranch(branchName).filter(n => n.id !== node.id);
-                    // Calculate left margin for each branch column
-                    let left = 0;
-                    for (let i = 0; i < branchIdx; i++) {
-                      left += branchWidths[i] + gap;
-                    }
-                    return (
-                      <div key={branchName} className="flex flex-col items-center" style={{ width: branchWidths[branchIdx], marginLeft: branchIdx === 0 ? 0 : gap }}>
-                        {/* Branch tag */}
-                        {editingBranch === branchName ? (
-                          <input
-                            ref={inputRef}
-                            className={`bg-[#C6F2F2] text-[#2B4C4C] px-2 py-1 rounded-lg text-xs font-normal mb-0 mt-0 outline-none border ${(editingBranch === branchName && branchRenameError) ? 'border-red-500' : 'border-[#2B4C4C]'}`}
-                            value={editingBranchValue}
-                            onChange={e => {
-                              setEditingBranchValue(e.target.value);
-                              if (editingBranch === branchName) {
-                                const trimmed = e.target.value.trim();
-                                const allBranches = getAllBranches().filter(b => b !== branchName);
-                                if (trimmed && allBranches.some(b => b.trim().toLowerCase() === trimmed.toLowerCase())) {
-                                  setBranchRenameError('A branch with this name already exists.');
-                                } else {
-                                  setBranchRenameError(null);
+                  {/* Branch columns */}
+                  <div className="flex flex-row justify-center mt-0" style={{ width: svgWidth }}>
+                    {branches.map((branchName: any, branchIdx: number) => {
+                      // Filter out the current node from the branch nodes to prevent direct recursion
+                      const subBranchNodes = getNodesForBranch(branchName).filter(n => n.id !== node.id);
+                      // Calculate left margin for each branch column
+                      let left = 0;
+                      for (let i = 0; i < branchIdx; i++) {
+                        left += branchWidths[i] + gap;
+                      }
+                      return (
+                        <div key={branchName} className="flex flex-col items-center" style={{ width: branchWidths[branchIdx], marginLeft: branchIdx === 0 ? 0 : gap }}>
+                          {/* Branch tag */}
+                          {editingBranch === branchName ? (
+                            <input
+                              ref={inputRef}
+                              className={`bg-[#C6F2F2] text-[#2B4C4C] px-2 py-1 rounded-lg text-xs font-normal mb-0 mt-0 outline-none border ${(editingBranch === branchName && branchRenameError) ? 'border-red-500' : 'border-[#2B4C4C]'}`}
+                              value={editingBranchValue}
+                              onChange={e => {
+                                setEditingBranchValue(e.target.value);
+                                if (editingBranch === branchName) {
+                                  const trimmed = e.target.value.trim();
+                                  const allBranches = getAllBranches().filter(b => b !== branchName);
+                                  if (trimmed && allBranches.some(b => b.trim().toLowerCase() === trimmed.toLowerCase())) {
+                                    setBranchRenameError('A branch with this name already exists.');
+                                  } else {
+                                    setBranchRenameError(null);
+                                  }
                                 }
-                              }
-                            }}
-                            onBlur={() => {
-                              if (editingBranch === branchName) {
-                                const trimmed = editingBranchValue.trim();
-                                const allBranches = getAllBranches().filter(b => b !== branchName);
-                                if (trimmed && allBranches.some(b => b.trim().toLowerCase() === trimmed.toLowerCase())) {
-                                  setBranchRenameError('A branch with this name already exists.');
-                                  return;
-                                }
-                                if (editingBranchValue && editingBranchValue !== branchName && !branchRenameError) {
-                                  updateBranchNameEverywhere(branchName, editingBranchValue);
-                                  setTimeout(() => {
-                                    const latestWorkflow = state.workflows.find(w => w.id === workflowId);
-                                    if (selectedNode && latestWorkflow) {
-                                      const updatedNode = latestWorkflow.nodes.find((n: any) => n.id === selectedNode.id);
-                                      if (updatedNode) {
-                                        dispatch({ type: 'SELECT_NODE', payload: updatedNode });
-                                      }
-                                    }
-                                  }, 0);
-                                }
-                                setEditingBranch(null);
-                                setBranchRenameError(null);
-                              }
-                            }}
-                            onKeyDown={e => {
-                              if (editingBranch === branchName) {
-                                if (e.key === 'Enter') {
+                              }}
+                              onBlur={() => {
+                                if (editingBranch === branchName) {
                                   const trimmed = editingBranchValue.trim();
                                   const allBranches = getAllBranches().filter(b => b !== branchName);
                                   if (trimmed && allBranches.some(b => b.trim().toLowerCase() === trimmed.toLowerCase())) {
@@ -1010,134 +985,149 @@ export function WorkflowBuilder() {
                                   }
                                   setEditingBranch(null);
                                   setBranchRenameError(null);
-                                } else if (e.key === 'Escape') {
-                                  setEditingBranch(null);
-                                  setBranchRenameError(null);
                                 }
-                              }
-                            }}
-                            autoFocus
-                            style={{ minWidth: 60 }}
-                          />
-                        ) : (
-                          <div
-                            className="bg-[#C6F2F2] text-[#2B4C4C] px-2 py-1 rounded-lg text-xs font-normal mb-0 mt-0 cursor-pointer hover:ring-2 hover:ring-[#2B4C4C]"
-                            onClick={() => {
-                              setEditingBranch(branchName);
-                              setEditingBranchValue(branchName);
-                              setTimeout(() => inputRef.current?.focus(), 0);
-                            }}
-                            title="Click to rename branch"
-                          >
-                            {branchName}
-                          </div>
-                        )}
-                        {editingBranch === branchName && branchRenameError && (
-                          <div className="text-xs text-red-500 mt-1">{branchRenameError}</div>
-                        )}
-                        {/* Vertical line from tag to first node or plus */}
-                        <div className="w-0.5 h-4 bg-slate-300 m-0 p-0" style={{ margin: 0, padding: 0 }} />
-                        {/* If branch is empty, show plus button */}
-                        {branchNodes.length === 0 && (
-                          <button
-                            onClick={() => handleAddActivity(0, branchName)}
-                            className="w-6 h-6 bg-gray-400 text-white rounded-lg flex items-center justify-center mt-0 hover:bg-gray-500 transition-colors"
-                          >
-                            <Plus className="w-4 h-4" />
-                          </button>
-                        )}
-                        {/* Render all nodes in this branch recursively, passing the updated visitedNodeIds */}
-                        {renderBranch(branchName, branchIdx + 1, node.id, [...visitedNodeIds, node.id])}
-                      </div>
-                    );
-                  })}
+                              }}
+                              onKeyDown={e => {
+                                if (editingBranch === branchName) {
+                                  if (e.key === 'Enter') {
+                                    const trimmed = editingBranchValue.trim();
+                                    const allBranches = getAllBranches().filter(b => b !== branchName);
+                                    if (trimmed && allBranches.some(b => b.trim().toLowerCase() === trimmed.toLowerCase())) {
+                                      setBranchRenameError('A branch with this name already exists.');
+                                      return;
+                                    }
+                                    if (editingBranchValue && editingBranchValue !== branchName && !branchRenameError) {
+                                      updateBranchNameEverywhere(branchName, editingBranchValue);
+                                      setTimeout(() => {
+                                        const latestWorkflow = state.workflows.find(w => w.id === workflowId);
+                                        if (selectedNode && latestWorkflow) {
+                                          const updatedNode = latestWorkflow.nodes.find((n: any) => n.id === selectedNode.id);
+                                          if (updatedNode) {
+                                            dispatch({ type: 'SELECT_NODE', payload: updatedNode });
+                                          }
+                                        }
+                                      }, 0);
+                                    }
+                                    setEditingBranch(null);
+                                    setBranchRenameError(null);
+                                  } else if (e.key === 'Escape') {
+                                    setEditingBranch(null);
+                                    setBranchRenameError(null);
+                                  }
+                                }
+                              }}
+                              autoFocus
+                              style={{ minWidth: 60 }}
+                            />
+                          ) : (
+                            <div
+                              className="bg-[#C6F2F2] text-[#2B4C4C] px-2 py-1 rounded-lg text-xs font-normal mb-0 mt-0 cursor-pointer hover:ring-2 hover:ring-[#2B4C4C]"
+                              onClick={() => {
+                                setEditingBranch(branchName);
+                                setEditingBranchValue(branchName);
+                                setTimeout(() => inputRef.current?.focus(), 0);
+                              }}
+                              title="Click to rename branch"
+                            >
+                              {branchName}
+                            </div>
+                          )}
+                          {editingBranch === branchName && branchRenameError && (
+                            <div className="text-xs text-red-500 mt-1">{branchRenameError}</div>
+                          )}
+                          {/* Vertical line from tag to first node or plus */}
+                          <div className="w-0.5 h-4 bg-slate-300 m-0 p-0" style={{ margin: 0, padding: 0 }} />
+                          {/* Render all nodes in this branch recursively, or a plus button if empty */}
+                          {renderBranch(branchName, branchIdx + 1, node.id, [...visitedNodeIds, node.id])}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            );
-          }
+              );
+            }
 
-          // --- Non-condition node rendering (unchanged) ---
-          return (
-            <React.Fragment key={node.id}>
-              <div className="mb-0 flex flex-col items-center w-[264px]">
-                <div
-                  className={`w-full bg-white rounded-xl p-4 mt-0 -mt-4 cursor-pointer shadow-sm hover:shadow-md transition-all duration-200 relative group
-                    ${selectedNode?.id === node.id
-                      ? 'border-2 border-[#4D3EE0] shadow-sm'
-                      : 'border border-slate-200'
-                    }`}
-                  onClick={e => {
-                    e.stopPropagation();
-                    handleNodeClick(node);
-                  }}
-                >
-                  <button
+            // --- Non-condition node rendering (unchanged) ---
+            return (
+              <React.Fragment key={node.id}>
+                <div className="mb-0 flex flex-col items-center w-[264px]">
+                  <div
+                    className={`w-full bg-white rounded-xl p-4 mt-0 -mt-4 cursor-pointer shadow-sm hover:shadow-md transition-all duration-200 relative group
+                      ${selectedNode?.id === node.id
+                        ? 'border-2 border-[#4D3EE0] shadow-sm'
+                        : 'border border-slate-200'
+                      }`}
                     onClick={e => {
                       e.stopPropagation();
-                      handleNodeDelete(node.id);
+                      handleNodeClick(node);
                     }}
-                    className="absolute top-3 right-3 p-1 text-slate-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
                   >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ backgroundColor: iconColor.bg }}>
-                      <IconComponent className="w-4 h-4" style={{ color: iconColor.iconColor }} />
+                    <button
+                      onClick={e => {
+                        e.stopPropagation();
+                        handleNodeDelete(node.id);
+                      }}
+                      className="absolute top-3 right-3 p-1 text-slate-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 rounded-[10px] flex items-center justify-center flex-shrink-0" style={{ backgroundColor: iconColor.bg }}>
+                        <IconComponent className="w-4 h-4" style={{ color: iconColor.iconColor }} />
+                      </div>
+                      <h3 className="font-medium text-[#353B46] text-[14px] mb-0">{node.userAssignedName || template.name}</h3>
                     </div>
-                    <h3 className="font-medium text-[#353B46] text-[14px] mb-0">{node.userAssignedName || template.name}</h3>
+                    {displayDescription && (
+                      <p className="text-[10px] text-[#637085] leading-relaxed mt-2">{displayDescription}</p>
+                    )}
                   </div>
-                  {displayDescription && (
-                    <p className="text-[10px] text-[#637085] leading-relaxed mt-2">{displayDescription}</p>
-                  )}
                 </div>
-              </div>
-              {/* Connection Line */}
-              <div className="flex justify-center mb-0">
-                <div className="w-0.5 h-6 bg-slate-300"></div>
-              </div>
-              {/* Plus button after (except for Condition node) */}
-              <div className="flex flex-col items-center mb-0">
-                {isLast ? (
-                  <button
-                    onClick={e => handleAddActivity(index + 1, branch, e)}
-                    className="w-6 h-6 bg-gray-400 text-white rounded-lg flex items-center justify-center hover:bg-gray-500 transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                ) : (
-                  <>
+                {/* Connection Line */}
+                <div className="flex justify-center mb-0">
+                  <div className="w-0.5 h-6 bg-slate-300"></div>
+                </div>
+                {/* Plus button after (except for Condition node) */}
+                <div className="flex flex-col items-center mb-0">
+                  {isLast ? (
                     <button
                       onClick={e => handleAddActivity(index + 1, branch, e)}
-                      className="w-4 h-4 flex items-center justify-center rounded-full bg-[#AEB5C2] text-[#AEB5C2] transition-all duration-200 group hover:w-6 hover:h-6 hover:bg-gray-400 hover:text-white hover:rounded-lg"
-                      style={{ minWidth: 12, minHeight: 12 }}
+                      className="w-6 h-6 bg-gray-400 text-white rounded-lg flex items-center justify-center hover:bg-gray-500 transition-colors"
                     >
-                      <Plus className="w-3 h-3 group-hover:w-4 group-hover:h-4 transition-all duration-200" />
+                      <Plus className="w-4 h-4" />
                     </button>
-                    {/* Short vertical line after minimized plus button */}
-                    <div className="w-0.5 h-6 bg-slate-300" />
-                  </>
-                )}
-              </div>
-            </React.Fragment>
-          );
-        })}
+                  ) : (
+                    <>
+                      <button
+                        onClick={e => handleAddActivity(index + 1, branch, e)}
+                        className="w-4 h-4 flex items-center justify-center rounded-full bg-[#AEB5C2] text-[#AEB5C2] transition-all duration-200 group hover:w-6 hover:h-6 hover:bg-gray-400 hover:text-white hover:rounded-lg"
+                        style={{ minWidth: 12, minHeight: 12 }}
+                      >
+                        <Plus className="w-3 h-3 group-hover:w-4 group-hover:h-4 transition-all duration-200" />
+                      </button>
+                      {/* Short vertical line after minimized plus button */}
+                      <div className="w-0.5 h-6 bg-slate-300" />
+                    </>
+                  )}
+                </div>
+              </React.Fragment>
+            );
+          })
+        ) : (
+          <div className="flex justify-center mb-0">
+            <button
+              onClick={e => handleAddActivity(0, branch, e)}
+              className="w-6 h-6 bg-gray-400 text-white rounded-lg flex items-center justify-center hover:bg-gray-500 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
     );
   };
 
   // Find the main branch nodes before rendering the plus button after the Trigger node
   const mainBranchNodes = getNodesForBranch('main');
-
-  // At the top of WorkflowBuilder, before the return statement:
-  const branchesRenderedAsChildren = new Set<string>();
-  state.workflows.forEach(wf => {
-    wf.nodes.forEach(node => {
-      const template = getActivityTemplate(node.activityTemplateId);
-      if (template && template.name === 'Condition' && node.metadata?.branches) {
-        node.metadata.branches.forEach((b: string) => branchesRenderedAsChildren.add(b));
-      }
-    });
-  });
 
   const handleDeleteWorkflow = async () => {
     if (!workflow) return;
@@ -1566,17 +1556,6 @@ export function WorkflowBuilder() {
                     <Plus className="w-3 h-3 group-hover:w-4 group-hover:h-4 transition-all duration-200" />
                   </button>
                   <div className="w-0.5 h-6 bg-slate-300" />
-                </div>
-              )}
-              {/* Add Activity Button after Trigger */}
-              {mainBranchNodes.length === 0 && (
-                <div className="flex justify-center mb-0">
-                  <button
-                    onClick={e => handleAddActivity(0, 'main', e)}
-                    className="w-6 h-6 bg-gray-400 text-white rounded-lg flex items-center justify-center hover:bg-gray-500 transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
                 </div>
               )}
 
