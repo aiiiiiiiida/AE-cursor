@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Copy, Trash2, Edit, Play, Calendar, Activity, Network,MoreHorizontal, MoreVertical, Globe, Settings, AlertTriangle, X, Bot, Workflow as WorkflowIcon, FilePenLine, Rows3 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -34,6 +34,10 @@ export function WorkflowsTable() {
   const [categoryInput, setCategoryInput] = useState(detailsForm.category || '');
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [editingCell, setEditingCell] = useState<{ workflowId: string; field: 'category' | 'status' | 'channel' } | null>(null);
+  const editingSelectRef = useRef<HTMLSelectElement | null>(null);
+  const [dropdownValue, setDropdownValue] = useState<string>('');
+  const [categoryDropdownInput, setCategoryDropdownInput] = useState<string>('');
 
   // Compute unique categories and counts
   const categoryCounts = useMemo(() => {
@@ -145,6 +149,116 @@ export function WorkflowsTable() {
     setCategoryInput(workflow.category || '');
     setShowCategoryDropdown(false); // Close dropdown when opening modal
     setWorkflowDetailsModal({ open: true, workflow });
+  };
+
+  // Dropdown options
+  const STATUS_OPTIONS = [
+    { value: 'draft', label: 'Draft', tag: (
+      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800">Draft</span>
+    ) },
+    { value: 'published', label: 'Live', tag: (
+      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-[#D8F4F2] text-[#3C6D68]">Live</span>
+    ) },
+  ];
+  const CHANNEL_OPTIONS = [
+    { value: 'Web', label: 'Web', icon: <Globe className="w-4 h-4 text-slate-400 inline-block mr-2" /> },
+    { value: 'Chatbot', label: 'Chatbot', icon: <Bot className="w-4 h-4 text-slate-400 inline-block mr-2" /> },
+    { value: 'Multichannel', label: 'Multichannel', icon: <Rows3 className="w-4 h-4 text-slate-400 inline-block mr-2" /> },
+  ];
+
+  // Helper to update workflow field inline
+  const handleInlineUpdate = async (workflow: Workflow, field: 'category' | 'status' | 'channel', value: string) => {
+    const updatedWorkflow = { ...workflow, [field]: value };
+    dispatch({ type: 'UPDATE_WORKFLOW', payload: updatedWorkflow });
+    await updateWorkflow(updatedWorkflow);
+    setEditingCell(null);
+    setDropdownValue('');
+  };
+
+  // Custom dropdown for status, channel, and category
+  const renderCustomDropdown = (workflow: Workflow, field: 'status' | 'channel' | 'category', options: any[], value: string) => {
+    // For category, allow typing to filter/add
+    if (field === 'category') {
+      const lowerInput = categoryDropdownInput.trim().toLowerCase();
+      const uniqueCategories = Array.from(new Set([...categoryOptions, workflow.category].filter((cat): cat is string => Boolean(cat))));
+      const filtered = uniqueCategories.filter((cat): cat is string => Boolean(cat)).filter(cat => cat.toLowerCase().includes(lowerInput));
+      const hasExactMatch = uniqueCategories.filter((cat): cat is string => Boolean(cat)).some(cat => cat.toLowerCase() === lowerInput);
+      return (
+        <div className="absolute z-20 bg-white border border-gray-200 rounded-xl shadow w-40 mt-1 p-2" tabIndex={0}
+          onBlur={() => setEditingCell(null)}
+          style={{ minWidth: 120 }}
+        >
+          <input
+            className="w-full mb-2 px-2 py-1 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#4D3EE0]"
+            placeholder="Type or select category"
+            value={categoryDropdownInput}
+            autoFocus
+            onChange={e => setCategoryDropdownInput(e.target.value)}
+            onKeyDown={async e => {
+              if (e.key === 'Enter') {
+                let val = categoryDropdownInput.trim();
+                if (val) {
+                  if (!categoryOptions.includes(val)) {
+                    setCategoryOptions(prev => [...prev, val]);
+                  }
+                  await handleInlineUpdate(workflow, 'category', val);
+                }
+              }
+            }}
+          />
+          {categoryDropdownInput && !hasExactMatch && (
+            <button
+              type="button"
+              className="w-full text-left px-3 py-2 text-sm text-[#2927B2] hover:bg-[#F4F6FA] border-b border-slate-100"
+              onMouseDown={async () => {
+                let val = categoryDropdownInput.trim();
+                if (val) {
+                  if (!categoryOptions.includes(val)) {
+                    setCategoryOptions(prev => [...prev, val]);
+                  }
+                  await handleInlineUpdate(workflow, 'category', val);
+                }
+              }}
+            >
+              {`+ Add "${categoryDropdownInput}"`}
+            </button>
+          )}
+          {filtered.map(cat => (
+            <button
+              key={cat}
+              type="button"
+              className={`w-full text-left px-3 py-2 text-sm hover:bg-[#F4F6FA] ${cat === value ? 'bg-[#EAE8FB]' : ''}`}
+              onMouseDown={async () => {
+                await handleInlineUpdate(workflow, 'category', cat as string);
+              }}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      );
+    }
+    return (
+      <div className="absolute z-20 bg-white border border-gray-200 rounded-xl shadow w-40 mt-1" tabIndex={0}
+        onBlur={() => setEditingCell(null)}
+        style={{ minWidth: 120 }}
+      >
+        {options.map(opt => (
+          <button
+            key={opt.value}
+            type="button"
+            className={`w-full flex items-center px-3 py-2 text-left text-sm hover:bg-[#F4F6FA] ${value === opt.value ? 'bg-[#EAE8FB]' : ''}`}
+            onMouseDown={async () => {
+              await handleInlineUpdate(workflow, field as any, opt.value);
+            }}
+          >
+            {field === 'channel' && opt.icon}
+            {field === 'status' && opt.tag}
+            <span className="ml-2">{opt.label}</span>
+          </button>
+        ))}
+      </div>
+    );
   };
 
   if (state.loading) {
@@ -304,37 +418,50 @@ export function WorkflowsTable() {
                           )}
                         </div>
                       </td>
-                      {/* Category */}
-                      <td className="py-4 px-5">
-                        <span className="text-sm text-slate-600">{workflow.category ? workflow.category : '-'}</span>
+                      {/* Category (custom dropdown overlay) */}
+                      <td className="py-4 px-5 relative" onClick={e => { e.stopPropagation(); setEditingCell({ workflowId: workflow.id, field: 'category' }); setCategoryDropdownInput(workflow.category || ''); }}>
+                        {editingCell && editingCell.workflowId === workflow.id && editingCell.field === 'category' ? (
+                          renderCustomDropdown(workflow, 'category', categoryOptions, workflow.category || '')
+                        ) : (
+                          <span className="text-sm text-slate-600 cursor-pointer">{workflow.category ? workflow.category : '-'}</span>
+                        )}
                       </td>
-                      <td className="py-4 px-6">
-  <span
-    className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${
-      workflow.status === 'published'
-        ? 'bg-[#D8F4F2] text-[#3C6D68]'
-        : 'bg-gray-100 text-gray-800'
-    }`}
-  >
-    {workflow.status === 'published'
-      ? 'Live'
-      : workflow.status === 'draft'
-      ? 'Draft'
-      : workflow.status}
-  </span>
-</td>
-
-                      <td className="py-4 px-6">
-                        <div className="flex items-center space-x-2">
-                          {workflow.channel === 'Chatbot' ? (
-                            <Bot className="w-4 h-4 text-slate-400" />
-                          ) : workflow.channel === 'Multichannel' ? (
-                            <Rows3 className="w-4 h-4 text-slate-400" />
-                          ) : (
-                            <Globe className="w-4 h-4 text-slate-400" />
-                          )}
-                          <span className="text-sm text-slate-600">{workflow.channel}</span>
-                        </div>
+                      {/* Status (inline dropdown with tags) */}
+                      <td className="py-4 px-6 relative" onClick={e => { e.stopPropagation(); setEditingCell({ workflowId: workflow.id, field: 'status' }); setDropdownValue(workflow.status); }}>
+                        {editingCell && editingCell.workflowId === workflow.id && editingCell.field === 'status' ? (
+                          renderCustomDropdown(workflow, 'status', STATUS_OPTIONS, workflow.status)
+                        ) : (
+                          <span
+                            className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${
+                              workflow.status === 'published'
+                                ? 'bg-[#D8F4F2] text-[#3C6D68]'
+                                : 'bg-gray-100 text-gray-800'
+                            } cursor-pointer`}
+                          >
+                            {workflow.status === 'published'
+                              ? 'Live'
+                              : workflow.status === 'draft'
+                              ? 'Draft'
+                              : workflow.status}
+                          </span>
+                        )}
+                      </td>
+                      {/* Channel (inline dropdown with icons) */}
+                      <td className="py-4 px-6 relative" onClick={e => { e.stopPropagation(); setEditingCell({ workflowId: workflow.id, field: 'channel' }); setDropdownValue(workflow.channel || ''); }}>
+                        {editingCell && editingCell.workflowId === workflow.id && editingCell.field === 'channel' ? (
+                          renderCustomDropdown(workflow, 'channel', CHANNEL_OPTIONS, workflow.channel || '')
+                        ) : (
+                          <div className="flex items-center space-x-2 cursor-pointer">
+                            {workflow.channel === 'Chatbot' ? (
+                              <Bot className="w-4 h-4 text-slate-400" />
+                            ) : workflow.channel === 'Multichannel' ? (
+                              <Rows3 className="w-4 h-4 text-slate-400" />
+                            ) : (
+                              <Globe className="w-4 h-4 text-slate-400" />
+                            )}
+                            <span className="text-sm text-slate-600">{workflow.channel}</span>
+                          </div>
+                        )}
                       </td>
                       <td className="py-4 px-6">
                         <span className="text-sm text-slate-600">{workflow.version}</span>
