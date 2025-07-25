@@ -1,10 +1,4 @@
-import OpenAI from 'openai';
 import { ActivityTemplate } from '../types';
-
-const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true,
-});
 
 export async function sendMessageToOpenAI(
     messages: {role: 'user' | 'assistant' | 'system', content: string}[],
@@ -39,17 +33,26 @@ Example JSON response:
   }
 
   try {
-    const completion = await openai.chat.completions.create({
-      messages: newMessages,
-      model: 'gpt-4o',
-      response_format: { type: "json_object" }, // Ask for JSON response
+    // Call the Netlify serverless function
+    const response = await fetch('/.netlify/functions/openai-proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: newMessages,
+        // You can add more parameters if your function supports them
+      })
     });
 
-    const response = completion.choices[0]?.message?.content;
-    if (!response) {
+    if (!response.ok) {
+      throw new Error(`Serverless function error: ${response.statusText}`);
+    }
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) {
       throw new Error('No response from OpenAI');
     }
-    return response;
+    return content;
   } catch (error) {
     console.error('Error sending message to OpenAI:', error);
     throw error;
