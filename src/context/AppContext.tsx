@@ -12,6 +12,7 @@ type AppAction =
   | { type: 'DELETE_ACTIVITY_TEMPLATE'; payload: string }
   | { type: 'SELECT_ACTIVITY_TEMPLATE'; payload: ActivityTemplate }
   | { type: 'ADD_NODE_TO_WORKFLOW'; payload: { workflowId: string; node: Omit<WorkflowNode, 'id'> } }
+  | { type: 'ADD_NODES'; payload: { workflowId: string, activityIds: string[], branch: string } }
   | { type: 'UPDATE_NODE_IN_WORKFLOW'; payload: { workflowId: string; nodeId: string; updates: Partial<WorkflowNode> } }
   | { type: 'SELECT_NODE'; payload: WorkflowNode | null }
   | { type: 'SET_LOADING'; payload: boolean }
@@ -94,6 +95,37 @@ function appReducer(state: AppState, action: AppAction): AppState {
             : w
         )
       };
+
+    case 'ADD_NODES': {
+        const { workflowId, activityIds, branch } = action.payload;
+        return {
+            ...state,
+            workflows: state.workflows.map(w => {
+                if (w.id !== workflowId) return w;
+
+                const branchNodes = w.nodes.filter(node => (node.metadata?.branch || 'main') === branch);
+                const insertPosition = branchNodes.length;
+
+                const newNodes = activityIds.map((activityId, index) => {
+                    const activity = state.activityTemplates.find(a => a.id === activityId);
+                    if (!activity) return null;
+
+                    const newNode: WorkflowNode = {
+                        id: `${Date.now()}-${index}`,
+                        activityTemplateId: activity.id,
+                        position: { x: 0, y: 0 },
+                        userAssignedName: activity.name,
+                        localSidePanelElements: [...activity.sidePanelElements],
+                        metadata: { branch }
+                    };
+                    return newNode;
+                }).filter((n): n is WorkflowNode => n !== null);
+
+                const updatedNodes = [...w.nodes, ...newNodes];
+                return { ...w, nodes: updatedNodes, updatedAt: new Date() };
+            })
+        };
+    }
 
     case 'UPDATE_NODE_IN_WORKFLOW':
       return {

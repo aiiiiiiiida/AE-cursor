@@ -4,6 +4,7 @@ import { ArrowLeft, Plus, Play, Save, Eye, Settings, Trash2, Search, X, Edit2, C
 import { useApp } from '../context/AppContext';
 import { WorkflowNode, ActivityTemplate, UIElement, ConditionalFollowUp } from '../types';
 import { DynamicForm } from './DynamicForm';
+import { ChatWidget } from './ChatWidget';
 import ReactDOM from 'react-dom';
 import * as Lucide from 'lucide-react';
 
@@ -187,6 +188,30 @@ export function WorkflowBuilder() {
 
   const workflow = state.workflows.find(w => w.id === workflowId);
   const selectedNode = state.selectedNode;
+
+  // --- Keep selectedNode in sync with latest workflow state ---
+  useEffect(() => {
+    if (selectedNode && selectedNode.id !== 'trigger' && workflow) {
+      const updatedNode = workflow.nodes.find((n: any) => n.id === selectedNode.id);
+      if (updatedNode && JSON.stringify(updatedNode) !== JSON.stringify(selectedNode)) {
+        dispatch({ type: 'SELECT_NODE', payload: updatedNode });
+      }
+    }
+    // For trigger node, keep in sync with workflow.triggerMetadata
+    if (selectedNode && selectedNode.id === 'trigger' && workflow && workflow.triggerMetadata) {
+      const triggerTemplate = state.activityTemplates.find(t => t.id === selectedNode.activityTemplateId);
+      const updatedTriggerNode = {
+        ...selectedNode,
+        ...workflow.triggerMetadata,
+        localSidePanelElements: workflow.triggerMetadata?.localSidePanelElements || triggerTemplate?.sidePanelElements || [],
+        metadata: workflow.triggerMetadata || {}
+      };
+      // Only update if changed (deep compare)
+      if (JSON.stringify(updatedTriggerNode) !== JSON.stringify(selectedNode)) {
+        dispatch({ type: 'SELECT_NODE', payload: updatedTriggerNode });
+      }
+    }
+  }, [workflow, workflow?.nodes, workflow?.triggerMetadata, selectedNode, state.activityTemplates]);
 
   // Reset selectedNode to null when workflowId changes (so no side panel is open by default)
   useEffect(() => {
@@ -1328,30 +1353,6 @@ export function WorkflowBuilder() {
     }
   }
 
-  // --- Keep selectedNode in sync with latest workflow state ---
-  useEffect(() => {
-    if (selectedNode && selectedNode.id !== 'trigger' && workflow) {
-      const updatedNode = workflow.nodes.find((n: any) => n.id === selectedNode.id);
-      if (updatedNode && JSON.stringify(updatedNode) !== JSON.stringify(selectedNode)) {
-        dispatch({ type: 'SELECT_NODE', payload: updatedNode });
-      }
-    }
-    // For trigger node, keep in sync with workflow.triggerMetadata
-    if (selectedNode && selectedNode.id === 'trigger' && workflow && workflow.triggerMetadata) {
-      const triggerTemplate = state.activityTemplates.find(t => t.id === selectedNode.activityTemplateId);
-      const updatedTriggerNode = {
-        ...selectedNode,
-        ...workflow.triggerMetadata,
-        localSidePanelElements: workflow.triggerMetadata?.localSidePanelElements || triggerTemplate?.sidePanelElements || [],
-        metadata: workflow.triggerMetadata || {}
-      };
-      // Only update if changed (deep compare)
-      if (JSON.stringify(updatedTriggerNode) !== JSON.stringify(selectedNode)) {
-        dispatch({ type: 'SELECT_NODE', payload: updatedTriggerNode });
-      }
-    }
-  }, [workflow, workflow?.nodes, workflow?.triggerMetadata, selectedNode, state.activityTemplates]);
-
   return (
     <div className="flex h-screen bg-white">
       {/* Header - Fixed at top, full width */}
@@ -1462,6 +1463,8 @@ export function WorkflowBuilder() {
           </div>
         </div>
       </div>
+
+      <ChatWidget workflowId={workflow.id} />
 
       {/* Main Content Area - Adjusted for header and side panel */}
       <div className={`flex-1 pt-[73px] ${selectedNode ? 'pr-80' : ''} transition-all duration-300`}>
