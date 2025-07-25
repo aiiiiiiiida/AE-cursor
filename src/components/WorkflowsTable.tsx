@@ -375,7 +375,7 @@ export function WorkflowsTable() {
                   <th className="text-left py-2 px-6 text-[13px] font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Status</th>
                   <th className="text-left py-2 px-6 text-[13px] font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Channel</th>
                   <th className="text-left py-2 px-6 text-[13px] font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Version</th>
-                  <th className="text-left py-2 px-6 text-[13px] font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Locale</th>
+                 
                   <th className="text-left py-2 px-6 text-[13px] font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Modified</th>
                   <th className="text-left py-2 px-6 text-[13px] font-medium text-[#353B46] bg-[#F8F9FB] border-l border-l-[#D1D5DC]">Created</th>
                   <th className="w-8 bg-[#F8F9FB] border-l border-l-[#D1D5DC]" style={{ borderTopRightRadius: '10px' }}></th>
@@ -466,9 +466,7 @@ export function WorkflowsTable() {
                       <td className="py-4 px-6">
                         <span className="text-sm text-slate-600">{workflow.version}</span>
                       </td>
-                      <td className="py-4 px-6">
-                        <span className="text-sm text-slate-600">{workflow.locale}</span>
-                      </td>
+                     
                       <td className="py-4 px-6">
                         <div>
                           <div className="text-sm text-slate-900">{workflow.updatedAt.toLocaleDateString()}</div>
