@@ -419,24 +419,24 @@ export function WorkflowsTable() {
                         </div>
                       </td>
                       {/* Category (custom dropdown overlay) */}
-                      <td className="py-4 px-5 relative" onClick={e => { e.stopPropagation(); setEditingCell({ workflowId: workflow.id, field: 'category' }); setCategoryDropdownInput(workflow.category || ''); }}>
+                      <td className="py-4 px-5 relative group" onClick={e => { e.stopPropagation(); setEditingCell({ workflowId: workflow.id, field: 'category' }); setCategoryDropdownInput(workflow.category || ''); }}>
                         {editingCell && editingCell.workflowId === workflow.id && editingCell.field === 'category' ? (
                           renderCustomDropdown(workflow, 'category', categoryOptions, workflow.category || '')
                         ) : (
-                          <span className="text-sm text-slate-600 cursor-pointer">{workflow.category ? workflow.category : '-'}</span>
+                          <span className="text-sm text-slate-600 cursor-pointer border border-transparent group-hover:border-slate-300 rounded-md px-1">{workflow.category ? workflow.category : '-'}</span>
                         )}
                       </td>
                       {/* Status (inline dropdown with tags) */}
-                      <td className="py-4 px-6 relative" onClick={e => { e.stopPropagation(); setEditingCell({ workflowId: workflow.id, field: 'status' }); setDropdownValue(workflow.status); }}>
+                      <td className="py-4 px-6 relative group" onClick={e => { e.stopPropagation(); setEditingCell({ workflowId: workflow.id, field: 'status' }); setDropdownValue(workflow.status); }}>
                         {editingCell && editingCell.workflowId === workflow.id && editingCell.field === 'status' ? (
                           renderCustomDropdown(workflow, 'status', STATUS_OPTIONS, workflow.status)
                         ) : (
                           <span
-                            className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium ${
+                            className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer border border-transparent group-hover:border-slate-400 ${
                               workflow.status === 'published'
                                 ? 'bg-[#D8F4F2] text-[#3C6D68]'
                                 : 'bg-gray-100 text-gray-800'
-                            } cursor-pointer`}
+                            }`}
                           >
                             {workflow.status === 'published'
                               ? 'Live'
@@ -447,11 +447,11 @@ export function WorkflowsTable() {
                         )}
                       </td>
                       {/* Channel (inline dropdown with icons) */}
-                      <td className="py-4 px-6 relative" onClick={e => { e.stopPropagation(); setEditingCell({ workflowId: workflow.id, field: 'channel' }); setDropdownValue(workflow.channel || ''); }}>
+                      <td className="py-4 px-6 relative group" onClick={e => { e.stopPropagation(); setEditingCell({ workflowId: workflow.id, field: 'channel' }); setDropdownValue(workflow.channel || ''); }}>
                         {editingCell && editingCell.workflowId === workflow.id && editingCell.field === 'channel' ? (
                           renderCustomDropdown(workflow, 'channel', CHANNEL_OPTIONS, workflow.channel || '')
                         ) : (
-                          <div className="flex items-center space-x-2 cursor-pointer">
+                          <div className="flex items-center space-x-2 cursor-pointer border border-transparent group-hover:border-slate-300 rounded-md px-1">
                             {workflow.channel === 'Chatbot' ? (
                               <Bot className="w-4 h-4 text-slate-400" />
                             ) : workflow.channel === 'Multichannel' ? (
