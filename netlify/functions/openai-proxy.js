@@ -1,4 +1,4 @@
-const { Configuration, OpenAIApi } = require("openai");
+const OpenAI = require("openai");
 
 exports.handler = async function(event, context) {
   // Only allow POST requests
@@ -21,13 +21,11 @@ exports.handler = async function(event, context) {
     };
   }
 
-  // Set up OpenAI client
-  const configuration = new Configuration({ apiKey });
-  const openai = new OpenAIApi(configuration);
+  const openai = new OpenAI({ apiKey });
 
   try {
-    // Example: Forward a chat completion request
-    const response = await openai.createChatCompletion({
+    // Forward a chat completion request
+    const response = await openai.chat.completions.create({
       model: body.model || "gpt-3.5-turbo",
       messages: body.messages,
       // ...add any other parameters you want to support
@@ -35,9 +33,10 @@ exports.handler = async function(event, context) {
 
     return {
       statusCode: 200,
-      body: JSON.stringify(response.data),
+      body: JSON.stringify(response),
     };
   } catch (error) {
+    console.error('OpenAI error:', error);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: error.message }),
