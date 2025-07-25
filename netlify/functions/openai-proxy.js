@@ -31,9 +31,32 @@ exports.handler = async function(event, context) {
       // ...add any other parameters you want to support
     });
 
+    // Extract the assistant's reply
+    const fullContent = response.choices[0]?.message?.content || '';
+    let reply = fullContent;
+    let suggestions = undefined;
+
+    // Try to extract a JSON block for suggestions from the reply
+    const jsonMatch = fullContent.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (parsed.suggestions) {
+          suggestions = parsed.suggestions;
+        }
+        // Remove the JSON block from the reply
+        reply = fullContent.replace(jsonMatch[0], '').trim();
+      } catch (e) {
+        // If JSON parsing fails, ignore and just use the full content as reply
+      }
+    }
+
+    const result = { reply };
+    if (suggestions) result.suggestions = suggestions;
+
     return {
       statusCode: 200,
-      body: JSON.stringify(response),
+      body: JSON.stringify(result),
     };
   } catch (error) {
     console.error('OpenAI error:', error);
