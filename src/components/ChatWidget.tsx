@@ -29,7 +29,7 @@ export function ChatWidget({ workflowId }: ChatWidgetProps) {
     {
         id: 'assistant-init',
         role: 'assistant',
-        content: 'Hello! I can help you build your workflow. Just let me know what activities you’d like to add.'
+        content: 'I can help build your workflow. What activities would you like to add?'
     }
   ]);
   const [input, setInput] = useState('');
@@ -222,8 +222,13 @@ export function ChatWidget({ workflowId }: ChatWidgetProps) {
       };
 
       if (suggestions && suggestions.length > 0) {
-        // Always create a new array for suggestions, and reset selection state
-        botMessage.suggestions = appState.activityTemplates.filter(a => suggestions.includes(a.id)).map(a => ({ ...a }));
+        // Create suggestions array in the order provided by the AI (which should match user's request order)
+        const orderedSuggestions = suggestions.map((suggestionId: string) => {
+          const activity = appState.activityTemplates.find(a => a.id === suggestionId);
+          return activity ? { ...activity } : null;
+        }).filter(Boolean);
+        
+        botMessage.suggestions = orderedSuggestions;
         botMessage.selectedActivities = [];
         botMessage.suggestionsAdded = false;
       }
@@ -269,13 +274,50 @@ export function ChatWidget({ workflowId }: ChatWidgetProps) {
     ));
   };
 
+
+
   const handleSelectionChange = (messageId: string, activityId: string, isSelected: boolean) => {
     setMessages(prevMessages => prevMessages.map(m => {
         if (m.id === messageId) {
             const currentSelected = m.selectedActivities || [];
-            const newSelected = isSelected
-                ? [...currentSelected, activityId]
-                : currentSelected.filter(id => id !== activityId);
+            let newSelected: string[];
+            
+            if (isSelected) {
+                // Use the AI's suggestion order (which should now match user's request order)
+                const suggestions = m.suggestions || [];
+                const activityIndex = suggestions.findIndex(a => a.id === activityId);
+                
+                if (activityIndex === -1) {
+                    // If not found in suggestions, add to end (fallback)
+                    newSelected = [...currentSelected, activityId];
+                } else {
+                    // Insert at the position it appears in the AI's suggestions (user's requested order)
+                    // First, remove it if it's already selected (to avoid duplicates)
+                    const withoutActivity = currentSelected.filter(id => id !== activityId);
+                    
+                    // Find where to insert it based on the AI's suggestion order
+                    let insertIndex = 0;
+                    for (let i = 0; i < suggestions.length; i++) {
+                        if (i === activityIndex) {
+                            break;
+                        }
+                        if (withoutActivity.includes(suggestions[i].id)) {
+                            insertIndex++;
+                        }
+                    }
+                    
+                    // Insert at the correct position
+                    newSelected = [
+                        ...withoutActivity.slice(0, insertIndex),
+                        activityId,
+                        ...withoutActivity.slice(insertIndex)
+                    ];
+                }
+            } else {
+                // Remove the activity when deselected
+                newSelected = currentSelected.filter(id => id !== activityId);
+            }
+            
             return { ...m, selectedActivities: newSelected };
         }
         return m;
