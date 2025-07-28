@@ -15,6 +15,7 @@ interface ChatMessage {
     suggestions?: ActivityTemplate[];
     selectedActivities?: string[];
     suggestionsAdded?: boolean;
+    activityBranches?: { [activityId: string]: string }; // Maps activity ID to branch
 }
 
 export function ChatWidget({ workflowId }: ChatWidgetProps) {
@@ -222,15 +223,38 @@ export function ChatWidget({ workflowId }: ChatWidgetProps) {
       };
 
       if (suggestions && suggestions.length > 0) {
-        // Create suggestions array in the order provided by the AI (which should match user's request order)
-        const orderedSuggestions = suggestions.map((suggestionId: string) => {
-          const activity = appState.activityTemplates.find(a => a.id === suggestionId);
-          return activity ? { ...activity } : null;
-        }).filter(Boolean);
+        // Handle both old format (string array) and new format (object array with branch info)
+        const activityBranches: { [activityId: string]: string } = {};
+        const orderedSuggestions: ActivityTemplate[] = [];
+        
+        suggestions.forEach((suggestion: any) => {
+          let activityId: string;
+          let branch: string | undefined;
+          
+          if (typeof suggestion === 'string') {
+            // Old format: just activity ID
+            activityId = suggestion;
+          } else if (suggestion.activityId) {
+            // New format: object with activityId and branch
+            activityId = suggestion.activityId;
+            branch = suggestion.branch;
+          } else {
+            return; // Skip invalid suggestions
+          }
+          
+          const activity = appState.activityTemplates.find(a => a.id === activityId);
+          if (activity) {
+            orderedSuggestions.push({ ...activity });
+            if (branch) {
+              activityBranches[activityId] = branch;
+            }
+          }
+        });
         
         botMessage.suggestions = orderedSuggestions;
         botMessage.selectedActivities = [];
         botMessage.suggestionsAdded = false;
+        botMessage.activityBranches = activityBranches;
       }
       
       setMessages(prev => [...prev, botMessage]);
@@ -258,16 +282,52 @@ export function ChatWidget({ workflowId }: ChatWidgetProps) {
       }
     }
     
-    const branch = getTargetBranch(userMsg);
-
-    dispatch({
-      type: 'ADD_NODES',
-      payload: {
-        workflowId: workflowId,
-        activityIds: message.selectedActivities,
-        branch: branch
-      }
-    });
+    // Check if we have branch information for specific activities
+    if (message.activityBranches && Object.keys(message.activityBranches).length > 0) {
+      // Handle multi-branch request
+      const activitiesByBranch: { [branch: string]: string[] } = {};
+      
+      message.selectedActivities.forEach(activityId => {
+        const branch = message.activityBranches![activityId];
+        if (branch) {
+          if (!activitiesByBranch[branch]) {
+            activitiesByBranch[branch] = [];
+          }
+          activitiesByBranch[branch].push(activityId);
+        } else {
+          // Fallback to default branch for activities without specific branch
+          const defaultBranch = getTargetBranch(userMsg);
+          if (!activitiesByBranch[defaultBranch]) {
+            activitiesByBranch[defaultBranch] = [];
+          }
+          activitiesByBranch[defaultBranch].push(activityId);
+        }
+      });
+      
+      // Add activities to each branch
+      Object.entries(activitiesByBranch).forEach(([branch, activityIds]) => {
+        dispatch({
+          type: 'ADD_NODES',
+          payload: {
+            workflowId: workflowId,
+            activityIds: activityIds,
+            branch: branch
+          }
+        });
+      });
+    } else {
+      // Single branch request (existing behavior)
+      const branch = getTargetBranch(userMsg);
+      
+      dispatch({
+        type: 'ADD_NODES',
+        payload: {
+          workflowId: workflowId,
+          activityIds: message.selectedActivities,
+          branch: branch
+        }
+      });
+    }
 
     setMessages(prevMessages => prevMessages.map(m => 
         m.id === messageId ? { ...m, suggestionsAdded: true } : m
@@ -393,7 +453,12 @@ export function ChatWidget({ workflowId }: ChatWidgetProps) {
                                                 <div className="w-8 h-8 rounded-[10px] flex items-center justify-center" style={{ backgroundColor: iconColor.bg }}>
                                                     <IconComponent className="w-4 h-4" style={{ color: iconColor.iconColor }} />
                                                 </div>
-                                                <span className="text-sm font-medium text-slate-800">{activity.name}</span>
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-medium text-slate-800">{activity.name}</span>
+                                                    {/* {msg.activityBranches && msg.activityBranches[activity.id] && (
+                                                        <span className="text-xs text-slate-500">Branch: {msg.activityBranches[activity.id]}</span>
+                                                    )} */}
+                                                </div>
                                             </div>
 
                                             <div className={`w-5 h-5 flex items-center justify-center rounded-md border ${
