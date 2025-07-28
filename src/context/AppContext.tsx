@@ -103,9 +103,25 @@ function appReducer(state: AppState, action: AppAction): AppState {
             workflows: state.workflows.map(w => {
                 if (w.id !== workflowId) return w;
 
+                // Get all nodes in the target branch
                 const branchNodes = w.nodes.filter(node => (node.metadata?.branch || 'main') === branch);
-                const insertPosition = branchNodes.length;
-
+                
+                // Calculate position for new nodes within the branch
+                const baseY = branchNodes.length > 0 ? Math.max(...branchNodes.map(n => n.position.y)) + 120 : 0;
+                
+                // Determine X position based on branch
+                let baseX = 0;
+                if (branchNodes.length > 0) {
+                    // Use the X position of existing nodes in this branch
+                    baseX = branchNodes[0].position.x;
+                } else if (branch !== 'main') {
+                    // For new branches, offset from main branch
+                    const mainBranchNodes = w.nodes.filter(node => (node.metadata?.branch || 'main') === 'main');
+                    if (mainBranchNodes.length > 0) {
+                        baseX = mainBranchNodes[0].position.x + 300; // Offset for new branches
+                    }
+                }
+                
                 const newNodes = activityIds.map((activityId, index) => {
                     const activity = state.activityTemplates.find(a => a.id === activityId);
                     if (!activity) return null;
@@ -113,7 +129,10 @@ function appReducer(state: AppState, action: AppAction): AppState {
                     const newNode: WorkflowNode = {
                         id: `${Date.now()}-${index}`,
                         activityTemplateId: activity.id,
-                        position: { x: 0, y: 0 },
+                        position: { 
+                            x: baseX, 
+                            y: baseY + (index * 120) 
+                        },
                         userAssignedName: activity.name,
                         localSidePanelElements: [...activity.sidePanelElements],
                         metadata: { branch }

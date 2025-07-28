@@ -45,20 +45,142 @@ export function ChatWidget({ workflowId }: ChatWidgetProps) {
       const branch = node.metadata?.branch || 'main';
       branches.add(branch);
     });
-    return Array.from(branches);
+    return Array.from(branches).sort();
+  };
+
+  // Helper: check if workflow has branching
+  const hasBranching = (): boolean => {
+    const branches = getAllBranches();
+    return branches.length > 1 || (branches.length === 1 && branches[0] !== 'main');
+  };
+
+  // Helper: check if workflow has condition nodes (which means no main branch)
+  const hasConditionNodes = (): boolean => {
+    const workflow: Workflow | undefined = appState.workflows.find(w => w.id === workflowId);
+    if (!workflow) return false;
+    return workflow.nodes.some(node => {
+      const activity = appState.activityTemplates.find(a => a.id === node.activityTemplateId);
+      return activity?.name.toLowerCase().includes('condition') || 
+             activity?.name.toLowerCase().includes('split') ||
+             activity?.name.toLowerCase().includes('if');
+    });
+  };
+
+  // Helper: find the deepest leaf branch in a given branch
+  const findDeepestLeafBranch = (startBranch: string): string => {
+    const workflow: Workflow | undefined = appState.workflows.find(w => w.id === workflowId);
+    if (!workflow) return startBranch;
+
+    // Get all nodes in the start branch
+    const branchNodes = workflow.nodes.filter(node => (node.metadata?.branch || 'main') === startBranch);
+    
+    // Find condition nodes in this branch
+    const conditionNodes = branchNodes.filter(node => {
+      const activity = appState.activityTemplates.find(a => a.id === node.activityTemplateId);
+      return activity?.name.toLowerCase().includes('condition') || 
+             activity?.name.toLowerCase().includes('split') ||
+             activity?.name.toLowerCase().includes('if');
+    });
+
+    // If no condition nodes in this branch, it's a leaf branch
+    if (conditionNodes.length === 0) {
+      return startBranch;
+    }
+
+    // Find the first condition node and get its branches
+    const firstConditionNode = conditionNodes[0];
+    const conditionBranches = firstConditionNode.metadata?.branches || [];
+    
+    if (conditionBranches.length === 0) {
+      return startBranch;
+    }
+
+    // Recursively find the deepest leaf branch in the first sub-branch
+    const deepestBranch = findDeepestLeafBranch(conditionBranches[0]);
+    console.log(`Deep branch search: ${startBranch} -> ${deepestBranch}`);
+    return deepestBranch;
+  };
+
+  // Helper: get the target branch for a user message
+  const getTargetBranch = (userMsg: string): string => {
+    const availableBranches = getAllBranches();
+    let branch = parseBranchFromMessage(userMsg, availableBranches);
+    
+    console.log('=== getTargetBranch ===');
+    console.log('User message:', userMsg);
+    console.log('Available branches:', availableBranches);
+    console.log('Parsed branch:', branch);
+    console.log('Has condition nodes:', hasConditionNodes());
+    console.log('Has branching:', hasBranching());
+    
+    if (!branch) {
+      // If no branch specified, find the deepest leaf branch
+      if (hasConditionNodes()) {
+        // Find the first available branch and go deep into it
+        const firstBranch = availableBranches[0];
+        console.log('No branch specified, has condition nodes, starting from:', firstBranch);
+        branch = findDeepestLeafBranch(firstBranch);
+      } else if (hasBranching()) {
+        const nonMainBranches = availableBranches.filter(b => b !== 'main');
+        if (nonMainBranches.length > 0) {
+          // Find the deepest leaf branch in the first non-main branch
+          console.log('No branch specified, has branching, starting from:', nonMainBranches[0]);
+          branch = findDeepestLeafBranch(nonMainBranches[0]);
+        } else {
+          branch = availableBranches[0];
+        }
+      } else {
+        // No branching, use main branch
+        branch = 'main';
+      }
+    } else {
+      // If branch was parsed but doesn't exist, check if it's a valid branch name pattern
+      // and create it if it follows the pattern (e.g., "Branch 1.1")
+      const branchPattern = /^Branch \d+\.\d+$/;
+      if (branchPattern.test(branch) && !availableBranches.includes(branch)) {
+        // The branch will be created when nodes are added to it
+      }
+    }
+    
+    console.log('Final selected branch:', branch);
+    console.log('=== END getTargetBranch ===');
+    
+    return branch;
   };
 
   // Helper: parse branch from user message
   const parseBranchFromMessage = (msg: string, availableBranches: string[]): string | null => {
-    // Match e.g. "branch 1.1" or "Branch 2"
-    const match = msg.match(/branch\s*([\w.\-]+)/i);
-    if (match) {
-      const branchName = `Branch ${match[1]}`;
-      // Try exact match
-      if (availableBranches.includes(branchName)) return branchName;
-      // Try case-insensitive match
-      const found = availableBranches.find(b => b.toLowerCase() === branchName.toLowerCase());
-      if (found) return found;
+    // Match various branch patterns:
+    // - "branch 1.2" or "Branch 1.2"
+    // - "to branch 1.2" or "to Branch 1.2"
+    // - "add to branch 1.2" or "add to Branch 1.2"
+    // - "in branch 1.2" or "in Branch 1.2"
+    // - "on branch 1.2" or "on Branch 1.2"
+    const patterns = [
+      /(?:add\s+)?(?:to\s+|in\s+|on\s+)?branch\s*([\w.\-]+)/i,
+      /branch\s*([\w.\-]+)/i
+    ];
+    
+    for (const pattern of patterns) {
+      const match = msg.match(pattern);
+      if (match) {
+        const branchName = `Branch ${match[1]}`;
+        // Try exact match
+        if (availableBranches.includes(branchName)) {
+          return branchName;
+        }
+        // Try case-insensitive match
+        const found = availableBranches.find(b => b.toLowerCase() === branchName.toLowerCase());
+        if (found) {
+          return found;
+        }
+        // If the branch doesn't exist but follows the pattern, return it anyway
+        // (it will be created when nodes are added to it)
+        const branchPattern = /^Branch \d+\.\d+$/;
+        if (branchPattern.test(branchName)) {
+          return branchName;
+        }
+      }
     }
     return null;
   };
@@ -130,12 +252,8 @@ export function ChatWidget({ workflowId }: ChatWidgetProps) {
         break;
       }
     }
-    const availableBranches = getAllBranches();
-    let branch = parseBranchFromMessage(userMsg, availableBranches);
-    if (!branch) {
-      // If not specified, use the first available branch (other than 'main' if possible)
-      branch = availableBranches.find(b => b !== 'main') || 'main';
-    }
+    
+    const branch = getTargetBranch(userMsg);
 
     dispatch({
       type: 'ADD_NODES',
@@ -264,6 +382,21 @@ export function ChatWidget({ workflowId }: ChatWidgetProps) {
                             >
                                 {msg.suggestionsAdded ? "Added to workflow" : "Add to workflow"}
                             </button>
+                            {!msg.suggestionsAdded && msg.selectedActivities && msg.selectedActivities.length > 0 && (
+                                <div className="mt-0 text-xs text-slate-500">
+                                    {/* Will be added to: {(() => {
+                                        const idx = messages.findIndex(m => m.id === msg.id);
+                                        let userMsg = '';
+                                        for (let i = idx - 1; i >= 0; i--) {
+                                            if (messages[i].role === 'user') {
+                                                userMsg = messages[i].content;
+                                                break;
+                                            }
+                                        }
+                                        return getTargetBranch(userMsg);
+                                    })()} */}
+                                </div>
+                            )}
                         </div>
                     )}
                 </React.Fragment>
