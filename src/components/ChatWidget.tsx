@@ -29,7 +29,7 @@ export function ChatWidget({ workflowId }: ChatWidgetProps) {
     {
         id: 'assistant-init',
         role: 'assistant',
-        content: 'Hello! I can help you build your workflow. Just let me know what you’d like to build.'
+        content: 'Hello! I can help you build your workflow. Just let me know what activities you’d like to add.'
     }
   ]);
   const [input, setInput] = useState('');
