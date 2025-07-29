@@ -58,6 +58,7 @@ export function ActivityConfigurator() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [templateToDelete, setTemplateToDelete] = useState<ActivityTemplate | null>(null);
   const [showCreateActivityModal, setShowCreateActivityModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Ensure only one trigger template exists at all times
   useEffect(() => {
@@ -167,6 +168,13 @@ export function ActivityConfigurator() {
     return colorConfig || ICON_COLORS[0];
   };
 
+  // Filter templates based on search query
+  const filteredTemplates = state.activityTemplates.filter(template =>
+    template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    template.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    template.category.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   if (state.loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -223,8 +231,22 @@ export function ActivityConfigurator() {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Templates List */}
         <div className="bg-white/70 backdrop-blur-sm rounded-xl border border-slate-200 p-4 shadow-sm">
+          {/* Search Bar */}
+          <div className="mb-2">
+            <div className="relative">
+              <Lucide.Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#8C95A8]" />
+              <input
+                type="text"
+                placeholder="Search activities..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-[#8C95A8] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#4D3EE0] focus:border-transparent text-sm placeholder:text-[#8C95A8]"
+              />
+            </div>
+          </div>
+          
           <div className="space-y-2">
-            {state.activityTemplates.map((template) => {
+            {filteredTemplates.map((template) => {
               const IconComponent = getIconComponent(template.icon, template.customIconSvg);
               const iconColor = getIconColor(template.iconColor || 'purple');
               const isCondition = template.name.toLowerCase() === 'condition' || template.icon === 'Split';
